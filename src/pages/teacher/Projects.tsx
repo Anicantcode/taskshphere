@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import Navbar from '@/components/layout/Navbar';
 import Sidebar from '@/components/layout/Sidebar';
 import ProjectCard from '@/components/dashboard/ProjectCard';
-import { Project } from '@/lib/types';
+import { Project, Task } from '@/lib/types';
 import { Plus, Search, Filter, ArrowUpDown, FolderKanban } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
@@ -50,16 +50,26 @@ const TeacherProjects = () => {
           
           if (tasksError) throw tasksError;
           
+          // Map the database tasks to our Task type
+          const mappedTasks: Task[] = tasksData.map(task => ({
+            id: task.id,
+            projectId: task.project_id,
+            title: task.title,
+            description: task.description || '',
+            isCompleted: task.is_completed,
+            dueDate: task.due_date,
+          }));
+          
           return {
             id: project.id,
             title: project.title,
-            description: project.description,
+            description: project.description || '',
             teacherId: project.teacher_id,
             groupId: project.group_id,
             groupName: project.groups?.name,
             createdAt: project.created_at,
             updatedAt: project.updated_at,
-            tasks: tasksData
+            tasks: mappedTasks
           } as Project;
         }));
         

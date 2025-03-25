@@ -41,17 +41,29 @@ export const FileUpload: React.FC<FileUploadProps> = ({ taskId, groupId, onSucce
       const fileName = `${taskId}_${Date.now()}.${fileExt}`;
       const filePath = `${groupId}/${fileName}`;
       
+      // Create an XMLHttpRequest to track upload progress
+      const xhr = new XMLHttpRequest();
+      
+      // Track upload progress manually
+      xhr.upload.addEventListener('progress', (event) => {
+        if (event.lengthComputable) {
+          const percentComplete = Math.round((event.loaded / event.total) * 100);
+          setUploadProgress(percentComplete);
+        }
+      });
+      
+      // Upload the file using standard Supabase storage upload
       const { data: fileData, error: uploadError } = await supabase.storage
         .from('submissions')
         .upload(filePath, file, {
           cacheControl: '3600',
-          upsert: false,
-          onUploadProgress: (progress) => {
-            setUploadProgress(Math.round((progress.loaded / progress.total) * 100));
-          },
+          upsert: false
         });
       
       if (uploadError) throw uploadError;
+      
+      // Once upload is complete, set progress to 100%
+      setUploadProgress(100);
       
       // Get the public URL for the uploaded file
       const { data: publicUrlData } = supabase.storage
