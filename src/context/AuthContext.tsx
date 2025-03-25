@@ -111,18 +111,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const register = async (name: string, email: string, password: string, role: UserRole) => {
     setIsLoading(true);
     try {
-      const { error } = await supabase.auth.signUp({
+      // First, create the Supabase auth user
+      const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
-        options: {
-          data: {
-            name,
-            role,
-          },
-        },
       });
 
-      if (error) throw error;
+      if (authError) throw authError;
+      
+      // Manually insert the profile with role since triggers might be failing
+      if (authData?.user) {
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .upsert({
+            id: authData.user.id,
+            name,
+            email,
+            role,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          });
+          
+        if (profileError) {
+          console.error('Profile creation error:', profileError);
+          toast({
+            variant: 'destructive',
+            title: 'Profile creation failed',
+            description: profileError.message || 'Unable to complete registration.',
+          });
+          // Attempt to clean up the auth user if profile creation fails
+          await supabase.auth.admin.deleteUser(authData.user.id);
+          throw profileError;
+        }
+      }
       
       toast({
         title: 'Registration successful',
