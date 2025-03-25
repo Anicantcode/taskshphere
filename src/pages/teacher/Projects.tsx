@@ -1,99 +1,129 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Navbar from '@/components/layout/Navbar';
 import Sidebar from '@/components/layout/Sidebar';
 import ProjectCard from '@/components/dashboard/ProjectCard';
-import { Project, Task } from '@/lib/types';
+import { Project } from '@/lib/types';
 import { Plus, Search, Filter, ArrowUpDown, FolderKanban } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/context/AuthContext';
-import { toast } from '@/hooks/use-toast';
-import LoadingSpinner from '@/components/ui/LoadingSpinner';
+
+// Mock data
+const mockProjects: Project[] = [
+  {
+    id: '1',
+    title: 'Web Development Basics',
+    description: 'Learn the fundamentals of HTML, CSS, and JavaScript through hands-on projects.',
+    teacherId: '1',
+    groupId: '1',
+    groupName: 'Web Wizards',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    tasks: [
+      {
+        id: '1',
+        projectId: '1',
+        title: 'Create a personal portfolio',
+        description: 'Design and implement a personal portfolio website using HTML and CSS.',
+        isCompleted: true,
+      },
+      {
+        id: '2',
+        projectId: '1',
+        title: 'JavaScript Calculator',
+        description: 'Build a functional calculator with JavaScript.',
+        isCompleted: false,
+      },
+    ],
+  },
+  {
+    id: '2',
+    title: 'Mobile App Design',
+    description: 'Design and prototype a mobile application focusing on user experience and interface.',
+    teacherId: '1',
+    groupId: '2',
+    groupName: 'UX Designers',
+    createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+    updatedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+    tasks: [
+      {
+        id: '4',
+        projectId: '2',
+        title: 'User Research',
+        description: 'Conduct user research to understand the target audience.',
+        isCompleted: true,
+      },
+      {
+        id: '5',
+        projectId: '2',
+        title: 'Wireframing',
+        description: 'Create wireframes for the mobile application.',
+        isCompleted: true,
+      },
+    ],
+  },
+  {
+    id: '3',
+    title: 'Data Science Fundamentals',
+    description: 'Introduction to data analysis, visualization, and basic machine learning concepts.',
+    teacherId: '1',
+    groupId: '3',
+    groupName: 'Data Explorers',
+    createdAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString(),
+    updatedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+    tasks: [
+      {
+        id: '7',
+        projectId: '3',
+        title: 'Data Cleaning',
+        description: 'Clean and prepare a dataset for analysis.',
+        isCompleted: true,
+      },
+      {
+        id: '8',
+        projectId: '3',
+        title: 'Exploratory Data Analysis',
+        description: 'Perform exploratory data analysis and create visualizations.',
+        isCompleted: false,
+      },
+    ],
+  },
+  {
+    id: '4',
+    title: 'Cybersecurity Workshop',
+    description: 'Explore common security vulnerabilities and implement protection strategies.',
+    teacherId: '1',
+    groupId: '4',
+    groupName: 'Security Guardians',
+    createdAt: new Date(Date.now() - 21 * 24 * 60 * 60 * 1000).toISOString(),
+    updatedAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
+    tasks: [
+      {
+        id: '9',
+        projectId: '4',
+        title: 'Network Security Audit',
+        description: 'Perform a basic security audit on a sample network.',
+        isCompleted: true,
+      },
+      {
+        id: '10',
+        projectId: '4',
+        title: 'Password Policy Implementation',
+        description: 'Design and document a secure password policy.',
+        isCompleted: true,
+      },
+    ],
+  },
+];
 
 const TeacherProjects = () => {
-  const { user } = useAuth();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchProjects = async () => {
-      if (!user) return;
-      
-      setLoading(true);
-      
-      try {
-        // Get projects created by this teacher
-        const { data: projectsData, error: projectsError } = await supabase
-          .from('projects')
-          .select(`
-            id,
-            title,
-            description,
-            teacher_id,
-            group_id,
-            created_at,
-            updated_at,
-            groups(name)
-          `)
-          .eq('teacher_id', user.id);
-        
-        if (projectsError) throw projectsError;
-        
-        // For each project, get its tasks
-        const projectsWithTasks = await Promise.all(projectsData.map(async (project) => {
-          const { data: tasksData, error: tasksError } = await supabase
-            .from('tasks')
-            .select('*')
-            .eq('project_id', project.id);
-          
-          if (tasksError) throw tasksError;
-          
-          // Map the database tasks to our Task type
-          const mappedTasks: Task[] = tasksData.map(task => ({
-            id: task.id,
-            projectId: task.project_id,
-            title: task.title,
-            description: task.description || '',
-            isCompleted: task.is_completed,
-            dueDate: task.due_date,
-          }));
-          
-          return {
-            id: project.id,
-            title: project.title,
-            description: project.description || '',
-            teacherId: project.teacher_id,
-            groupId: project.group_id,
-            groupName: project.groups?.name,
-            createdAt: project.created_at,
-            updatedAt: project.updated_at,
-            tasks: mappedTasks
-          } as Project;
-        }));
-        
-        setProjects(projectsWithTasks);
-      } catch (error) {
-        console.error('Error fetching projects:', error);
-        toast({
-          title: 'Error',
-          description: 'Failed to load projects. Please try again.',
-          variant: 'destructive',
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    fetchProjects();
-  }, [user]);
+  const [projects, setProjects] = useState<Project[]>(mockProjects);
 
   // Filter projects based on search query
   const filteredProjects = projects.filter(
     project =>
-      project.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      project.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      project.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      project.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
       project.groupName?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -148,11 +178,7 @@ const TeacherProjects = () => {
             </div>
             
             {/* Projects Grid */}
-            {loading ? (
-              <div className="flex justify-center items-center py-12">
-                <LoadingSpinner size="lg" />
-              </div>
-            ) : filteredProjects.length === 0 ? (
+            {filteredProjects.length === 0 ? (
               <div className="glass-card rounded-xl p-8 text-center">
                 <FolderKanban className="mx-auto h-12 w-12 text-muted-foreground/60" />
                 <h3 className="mt-4 text-xl font-semibold">No projects found</h3>

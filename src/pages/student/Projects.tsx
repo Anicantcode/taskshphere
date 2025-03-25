@@ -1,116 +1,77 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Navbar from '@/components/layout/Navbar';
 import Sidebar from '@/components/layout/Sidebar';
 import ProjectCard from '@/components/dashboard/ProjectCard';
-import { Project, Task } from '@/lib/types';
+import { Project } from '@/lib/types';
 import { Search, Filter, ArrowUpDown, FolderKanban } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/context/AuthContext';
-import { toast } from '@/hooks/use-toast';
-import LoadingSpinner from '@/components/ui/LoadingSpinner';
+
+// Mock data
+const mockProjects: Project[] = [
+  {
+    id: '1',
+    title: 'Web Development Basics',
+    description: 'Learn the fundamentals of HTML, CSS, and JavaScript through hands-on projects.',
+    teacherId: '1',
+    groupId: '1',
+    groupName: 'Web Wizards',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    tasks: [
+      {
+        id: '1',
+        projectId: '1',
+        title: 'Create a personal portfolio',
+        description: 'Design and implement a personal portfolio website using HTML and CSS.',
+        isCompleted: true,
+      },
+      {
+        id: '2',
+        projectId: '1',
+        title: 'JavaScript Calculator',
+        description: 'Build a functional calculator with JavaScript.',
+        isCompleted: false,
+      },
+    ],
+  },
+  {
+    id: '2',
+    title: 'Mobile App Design',
+    description: 'Design and prototype a mobile application focusing on user experience and interface.',
+    teacherId: '1',
+    groupId: '1',
+    groupName: 'Web Wizards',
+    createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+    updatedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+    tasks: [
+      {
+        id: '4',
+        projectId: '2',
+        title: 'User Research',
+        description: 'Conduct user research to understand the target audience.',
+        isCompleted: true,
+      },
+      {
+        id: '5',
+        projectId: '2',
+        title: 'Wireframing',
+        description: 'Create wireframes for the mobile application.',
+        isCompleted: true,
+      },
+    ],
+  },
+];
 
 const StudentProjects = () => {
-  const { user } = useAuth();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchProjects = async () => {
-      if (!user) return;
-      
-      setLoading(true);
-      
-      try {
-        // Get groups the student is a member of
-        const { data: groupsData, error: groupsError } = await supabase
-          .from('group_members')
-          .select('group_id')
-          .eq('student_id', user.id);
-        
-        if (groupsError) throw groupsError;
-        
-        if (!groupsData || groupsData.length === 0) {
-          setProjects([]);
-          setLoading(false);
-          return;
-        }
-        
-        const groupIds = groupsData.map(g => g.group_id);
-        
-        // Get projects for those groups
-        const { data: projectsData, error: projectsError } = await supabase
-          .from('projects')
-          .select(`
-            id,
-            title,
-            description,
-            teacher_id,
-            group_id,
-            created_at,
-            updated_at,
-            groups(name)
-          `)
-          .in('group_id', groupIds);
-        
-        if (projectsError) throw projectsError;
-        
-        // For each project, get its tasks
-        const projectsWithTasks = await Promise.all(projectsData.map(async (project) => {
-          const { data: tasksData, error: tasksError } = await supabase
-            .from('tasks')
-            .select('*')
-            .eq('project_id', project.id);
-          
-          if (tasksError) throw tasksError;
-          
-          // Map the database tasks to our Task type
-          const mappedTasks: Task[] = tasksData.map(task => ({
-            id: task.id,
-            projectId: task.project_id,
-            title: task.title,
-            description: task.description || '',
-            isCompleted: task.is_completed,
-            dueDate: task.due_date,
-          }));
-          
-          return {
-            id: project.id,
-            title: project.title,
-            description: project.description || '',
-            teacherId: project.teacher_id,
-            groupId: project.group_id,
-            groupName: project.groups?.name,
-            createdAt: project.created_at,
-            updatedAt: project.updated_at,
-            tasks: mappedTasks
-          } as Project;
-        }));
-        
-        setProjects(projectsWithTasks);
-      } catch (error) {
-        console.error('Error fetching projects:', error);
-        toast({
-          title: 'Error',
-          description: 'Failed to load projects. Please try again.',
-          variant: 'destructive',
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    fetchProjects();
-  }, [user]);
+  const [projects, setProjects] = useState<Project[]>(mockProjects);
 
   // Filter projects based on search query
   const filteredProjects = projects.filter(
     project =>
-      project.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      project.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      project.groupName?.toLowerCase().includes(searchQuery.toLowerCase())
+      project.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      project.description.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
@@ -157,11 +118,7 @@ const StudentProjects = () => {
             </div>
             
             {/* Projects Grid */}
-            {loading ? (
-              <div className="flex justify-center items-center py-12">
-                <LoadingSpinner size="lg" />
-              </div>
-            ) : filteredProjects.length === 0 ? (
+            {filteredProjects.length === 0 ? (
               <div className="glass-card rounded-xl p-8 text-center">
                 <FolderKanban className="mx-auto h-12 w-12 text-muted-foreground/60" />
                 <h3 className="mt-4 text-xl font-semibold">No projects found</h3>

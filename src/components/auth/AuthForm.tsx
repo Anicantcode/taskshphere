@@ -5,100 +5,66 @@ import { useAuth } from '@/context/AuthContext';
 import { UserRole } from '@/lib/types';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import { toast } from '@/hooks/use-toast';
-import { Input } from '@/components/ui/input';
-import { 
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage
-} from '@/components/ui/form';
-import { useForm } from 'react-hook-form';
-import { z } from 'zod';
-import { zodResolver } from '@hookform/resolvers/zod';
 
 interface AuthFormProps {
   type: 'login' | 'register';
 }
-
-const loginSchema = z.object({
-  email: z.string().email({ message: "Please enter a valid email address" }),
-  password: z.string().min(6, { message: "Password must be at least 6 characters" }),
-});
-
-const registerSchema = z.object({
-  name: z.string().min(2, { message: "Name must be at least 2 characters" }),
-  email: z.string().email({ message: "Please enter a valid email address" }),
-  password: z.string().min(6, { message: "Password must be at least 6 characters" }),
-  confirmPassword: z.string(),
-  role: z.enum(['teacher', 'student']),
-}).refine((data) => data.password === data.confirmPassword, {
-  message: "Passwords don't match",
-  path: ["confirmPassword"],
-});
-
-type LoginFormValues = z.infer<typeof loginSchema>;
-type RegisterFormValues = z.infer<typeof registerSchema>;
 
 const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
   const navigate = useNavigate();
   const { login, register } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   
-  const loginForm = useForm<LoginFormValues>({
-    resolver: zodResolver(loginSchema),
-    defaultValues: {
-      email: '',
-      password: '',
-    },
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    password: '',
+    confirmPassword: '',
+    role: 'student' as UserRole,
   });
 
-  const registerForm = useForm<RegisterFormValues>({
-    resolver: zodResolver(registerSchema),
-    defaultValues: {
-      name: '',
-      email: '',
-      password: '',
-      confirmPassword: '',
-      role: 'student',
-    },
-  });
-  
-  const currentForm = type === 'login' ? loginForm : registerForm;
-
-  const handleLoginSubmit = async (values: LoginFormValues) => {
-    setIsLoading(true);
-    
-    try {
-      await login(values.email, values.password);
-      toast({
-        title: "Welcome back!",
-        description: "You've been successfully logged in.",
-      });
-      navigate('/dashboard');
-    } catch (error) {
-      console.error('Authentication error:', error);
-      // Error is handled in the auth context
-    } finally {
-      setIsLoading(false);
-    }
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleRegisterSubmit = async (values: RegisterFormValues) => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     setIsLoading(true);
-    
+
     try {
-      await register(values.name, values.email, values.password, values.role as UserRole);
-      toast({
-        title: "Account created",
-        description: "You've been successfully registered.",
-      });
+      if (type === 'register') {
+        if (formData.password !== formData.confirmPassword) {
+          toast({
+            title: "Passwords don't match",
+            description: "Please make sure your passwords match.",
+            variant: "destructive",
+          });
+          return;
+        }
+        
+        await register(formData.name, formData.email, formData.password, formData.role);
+        toast({
+          title: "Account created",
+          description: "You've been successfully registered.",
+        });
+      } else {
+        await login(formData.email, formData.password);
+        toast({
+          title: "Welcome back!",
+          description: "You've been successfully logged in.",
+        });
+      }
+      
+      // Redirect based on user role (will be handled by protected routes)
       navigate('/dashboard');
     } catch (error) {
       console.error('Authentication error:', error);
-      // Error is handled in the auth context
+      toast({
+        title: "Authentication failed",
+        description: "Please check your credentials and try again.",
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -110,165 +76,106 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
         {type === 'login' ? 'Sign In' : 'Create Account'}
       </h2>
       
-      {type === 'login' ? (
-        <Form {...loginForm}>
-          <form onSubmit={loginForm.handleSubmit(handleLoginSubmit)} className="space-y-4">
-            <FormField
-              control={loginForm.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Email Address</FormLabel>
-                  <FormControl>
-                    <Input 
-                      type="email" 
-                      placeholder="your@email.com" 
-                      className="input-field" 
-                      {...field} 
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <FormField
-              control={loginForm.control}
-              name="password"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Password</FormLabel>
-                  <FormControl>
-                    <Input 
-                      type="password" 
-                      placeholder="••••••••" 
-                      className="input-field" 
-                      {...field} 
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="btn-primary w-full flex items-center justify-center"
-            >
-              {isLoading ? <LoadingSpinner size="sm" /> : 'Sign In'}
-            </button>
-          </form>
-        </Form>
-      ) : (
-        <Form {...registerForm}>
-          <form onSubmit={registerForm.handleSubmit(handleRegisterSubmit)} className="space-y-4">
-            <FormField
-              control={registerForm.control}
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {type === 'register' && (
+          <div className="space-y-2">
+            <label htmlFor="name" className="block text-sm font-medium">
+              Full Name
+            </label>
+            <input
+              id="name"
               name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Full Name</FormLabel>
-                  <FormControl>
-                    <Input 
-                      type="text" 
-                      placeholder="John Doe" 
-                      className="input-field" 
-                      {...field} 
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
+              type="text"
+              required
+              value={formData.name}
+              onChange={handleChange}
+              className="input-field"
+              placeholder="John Doe"
             />
+          </div>
+        )}
+        
+        <div className="space-y-2">
+          <label htmlFor="email" className="block text-sm font-medium">
+            Email Address
+          </label>
+          <input
+            id="email"
+            name="email"
+            type="email"
+            required
+            value={formData.email}
+            onChange={handleChange}
+            className="input-field"
+            placeholder="your@email.com"
+          />
+        </div>
+        
+        <div className="space-y-2">
+          <label htmlFor="password" className="block text-sm font-medium">
+            Password
+          </label>
+          <input
+            id="password"
+            name="password"
+            type="password"
+            required
+            value={formData.password}
+            onChange={handleChange}
+            className="input-field"
+            placeholder="••••••••"
+          />
+        </div>
+        
+        {type === 'register' && (
+          <>
+            <div className="space-y-2">
+              <label htmlFor="confirmPassword" className="block text-sm font-medium">
+                Confirm Password
+              </label>
+              <input
+                id="confirmPassword"
+                name="confirmPassword"
+                type="password"
+                required
+                value={formData.confirmPassword}
+                onChange={handleChange}
+                className="input-field"
+                placeholder="••••••••"
+              />
+            </div>
             
-            <FormField
-              control={registerForm.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Email Address</FormLabel>
-                  <FormControl>
-                    <Input 
-                      type="email" 
-                      placeholder="your@email.com" 
-                      className="input-field" 
-                      {...field} 
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <FormField
-              control={registerForm.control}
-              name="password"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Password</FormLabel>
-                  <FormControl>
-                    <Input 
-                      type="password" 
-                      placeholder="••••••••" 
-                      className="input-field" 
-                      {...field} 
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <FormField
-              control={registerForm.control}
-              name="confirmPassword"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Confirm Password</FormLabel>
-                  <FormControl>
-                    <Input 
-                      type="password" 
-                      placeholder="••••••••" 
-                      className="input-field" 
-                      {...field} 
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <FormField
-              control={registerForm.control}
-              name="role"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>I am a</FormLabel>
-                  <FormControl>
-                    <select
-                      className="input-field"
-                      {...field}
-                    >
-                      <option value="student">Student</option>
-                      <option value="teacher">Teacher</option>
-                    </select>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="btn-primary w-full flex items-center justify-center"
-            >
-              {isLoading ? <LoadingSpinner size="sm" /> : 'Create Account'}
-            </button>
-          </form>
-        </Form>
-      )}
+            <div className="space-y-2">
+              <label htmlFor="role" className="block text-sm font-medium">
+                I am a
+              </label>
+              <select
+                id="role"
+                name="role"
+                value={formData.role}
+                onChange={handleChange}
+                className="input-field"
+                required
+              >
+                <option value="student">Student</option>
+                <option value="teacher">Teacher</option>
+              </select>
+            </div>
+          </>
+        )}
+        
+        <button
+          type="submit"
+          disabled={isLoading}
+          className="btn-primary w-full flex items-center justify-center"
+        >
+          {isLoading ? (
+            <LoadingSpinner size="sm" />
+          ) : (
+            type === 'login' ? 'Sign In' : 'Create Account'
+          )}
+        </button>
+      </form>
       
       <div className="mt-6 text-center text-sm">
         {type === 'login' ? (
