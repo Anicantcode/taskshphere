@@ -9,104 +9,7 @@ import TaskList from '@/components/dashboard/TaskList';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import { Project, Task } from '@/lib/types';
 import { BarChart3, FolderKanban, ListTodo, Users } from 'lucide-react';
-
-// Mock data
-const mockProjects: Project[] = [
-  {
-    id: '1',
-    title: 'Web Development Basics',
-    description: 'Learn the fundamentals of HTML, CSS, and JavaScript through hands-on projects.',
-    teacherId: '1',
-    groupId: '1',
-    groupName: 'Web Wizards',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    tasks: [
-      {
-        id: '1',
-        projectId: '1',
-        title: 'Create a personal portfolio',
-        description: 'Design and implement a personal portfolio website using HTML and CSS.',
-        isCompleted: true,
-      },
-      {
-        id: '2',
-        projectId: '1',
-        title: 'JavaScript Calculator',
-        description: 'Build a functional calculator with JavaScript.',
-        isCompleted: false,
-      },
-      {
-        id: '3',
-        projectId: '1',
-        title: 'Responsive Navigation',
-        description: 'Create a responsive navigation menu that works on all devices.',
-        isCompleted: false,
-      },
-    ],
-  },
-  {
-    id: '2',
-    title: 'Mobile App Design',
-    description: 'Design and prototype a mobile application focusing on user experience and interface.',
-    teacherId: '1',
-    groupId: '2',
-    groupName: 'UX Designers',
-    createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-    updatedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-    tasks: [
-      {
-        id: '4',
-        projectId: '2',
-        title: 'User Research',
-        description: 'Conduct user research to understand the target audience.',
-        isCompleted: true,
-      },
-      {
-        id: '5',
-        projectId: '2',
-        title: 'Wireframing',
-        description: 'Create wireframes for the mobile application.',
-        isCompleted: true,
-      },
-      {
-        id: '6',
-        projectId: '2',
-        title: 'High-fidelity Prototype',
-        description: 'Design a high-fidelity prototype using Figma or Adobe XD.',
-        isCompleted: false,
-      },
-    ],
-  },
-];
-
-// Mock tasks for upcoming deadlines
-const upcomingTasks: Task[] = [
-  {
-    id: '2',
-    projectId: '1',
-    title: 'JavaScript Calculator',
-    description: 'Build a functional calculator with JavaScript.',
-    isCompleted: false,
-    dueDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
-  },
-  {
-    id: '6',
-    projectId: '2',
-    title: 'High-fidelity Prototype',
-    description: 'Design a high-fidelity prototype using Figma or Adobe XD.',
-    isCompleted: false,
-    dueDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
-  },
-  {
-    id: '3',
-    projectId: '1',
-    title: 'Responsive Navigation',
-    description: 'Create a responsive navigation menu that works on all devices.',
-    isCompleted: false,
-    dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-  },
-];
+import { allProjects, upcomingTasks } from '@/lib/mockData';
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -117,20 +20,62 @@ const Dashboard = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
 
   const isTeacher = user?.role === 'teacher';
+  
+  // Extract the group ID from the student ID (assuming format: "student-X")
+  const studentId = user?.id || '';
+  const groupId = studentId.split('-')[1] || '';
 
   useEffect(() => {
     // Simulate data loading
-    const timer = setTimeout(() => {
-      setProjects(mockProjects);
-      setTasks(upcomingTasks);
+    setTimeout(() => {
+      if (isTeacher) {
+        // For teacher, show all projects
+        setProjects(allProjects);
+        setTasks(upcomingTasks);
+      } else {
+        // For students, filter projects based on their group ID
+        const filteredProjects = allProjects.filter(project => project.groupId === groupId);
+        
+        // Get tasks from these projects
+        let groupTasks: Task[] = [];
+        filteredProjects.forEach(project => {
+          if (project.tasks) {
+            const projectTasks = project.tasks.map(task => ({
+              ...task,
+              projectTitle: project.title
+            }));
+            groupTasks = [...groupTasks, ...projectTasks];
+          }
+        });
+        
+        // Sort by completion status and due date if available
+        groupTasks.sort((a, b) => {
+          if (a.isCompleted !== b.isCompleted) {
+            return a.isCompleted ? 1 : -1;
+          }
+          if (a.dueDate && b.dueDate) {
+            return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+          }
+          return 0;
+        });
+        
+        setProjects(filteredProjects);
+        setTasks(groupTasks.slice(0, 3)); // Show only the first 3 tasks
+      }
+      
       setIsLoading(false);
     }, 1000);
-
-    return () => clearTimeout(timer);
-  }, []);
+  }, [isTeacher, groupId]);
 
   const handleTaskClick = (taskId: string) => {
-    navigate(`/tasks/${taskId}`);
+    // Find the project ID for this task
+    for (const project of projects) {
+      const task = project.tasks?.find(t => t.id === taskId);
+      if (task) {
+        navigate(`/projects/${project.id}`);
+        return;
+      }
+    }
   };
 
   // Stats summary
@@ -139,25 +84,33 @@ const Dashboard = () => {
       title: 'Total Projects',
       value: projects.length,
       icon: <FolderKanban className="h-5 w-5 text-primary" />,
-      change: '+2 this month',
+      change: `${projects.length} active projects`,
     },
     {
       title: 'Active Tasks',
-      value: tasks.length,
+      value: projects.reduce((count, project) => 
+        count + (project.tasks?.filter(task => !task.isCompleted).length || 0), 0),
       icon: <ListTodo className="h-5 w-5 text-green-500" />,
-      change: '3 due soon',
+      change: 'Need attention',
     },
     {
       title: isTeacher ? 'Student Groups' : 'Your Group',
-      value: isTeacher ? '5' : '1',
+      value: isTeacher ? '5' : groupId,
       icon: <Users className="h-5 w-5 text-blue-500" />,
       change: isTeacher ? '15 students' : '4 members',
     },
     {
       title: 'Completion Rate',
-      value: '68%',
+      value: (() => {
+        const totalTasks = projects.reduce((count, project) => 
+          count + (project.tasks?.length || 0), 0);
+        const completedTasks = projects.reduce((count, project) => 
+          count + (project.tasks?.filter(task => task.isCompleted).length || 0), 0);
+        
+        return totalTasks > 0 ? `${Math.round((completedTasks / totalTasks) * 100)}%` : '0%';
+      })(),
       icon: <BarChart3 className="h-5 w-5 text-purple-500" />,
-      change: '+5% from last week',
+      change: 'Overall progress',
     },
   ];
 
@@ -214,11 +167,17 @@ const Dashboard = () => {
                       </a>
                     </div>
                     
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {projects.map((project) => (
-                        <ProjectCard key={project.id} project={project} />
-                      ))}
-                    </div>
+                    {projects.length > 0 ? (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {projects.slice(0, 4).map((project) => (
+                          <ProjectCard key={project.id} project={project} />
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="glass-card rounded-xl p-6 text-center">
+                        <p className="text-muted-foreground">No projects assigned yet.</p>
+                      </div>
+                    )}
                   </div>
                   
                   {/* Tasks Section */}
@@ -233,7 +192,13 @@ const Dashboard = () => {
                       </a>
                     </div>
                     
-                    <TaskList tasks={tasks} onTaskClick={handleTaskClick} />
+                    {tasks.length > 0 ? (
+                      <TaskList tasks={tasks} onTaskClick={handleTaskClick} />
+                    ) : (
+                      <div className="glass-card rounded-xl p-6 text-center">
+                        <p className="text-muted-foreground">No upcoming tasks.</p>
+                      </div>
+                    )}
                   </div>
                 </div>
               </>
