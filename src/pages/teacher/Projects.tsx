@@ -3,8 +3,10 @@ import React, { useState } from 'react';
 import Navbar from '@/components/layout/Navbar';
 import Sidebar from '@/components/layout/Sidebar';
 import ProjectCard from '@/components/dashboard/ProjectCard';
+import CreateProjectModal from '@/components/projects/CreateProjectModal';
 import { Project } from '@/lib/types';
 import { Plus, Search, Filter, ArrowUpDown, FolderKanban } from 'lucide-react';
+import { toast } from '@/hooks/use-toast';
 
 // Mock data
 const mockProjects: Project[] = [
@@ -118,6 +120,7 @@ const TeacherProjects = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [projects, setProjects] = useState<Project[]>(mockProjects);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   // Filter projects based on search query
   const filteredProjects = projects.filter(
@@ -126,6 +129,44 @@ const TeacherProjects = () => {
       project.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
       project.groupName?.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  // Handle project creation
+  const handleCreateProject = (projectData: any) => {
+    // Create a new project object
+    const newProject: Project = {
+      id: `project-${Date.now()}`,
+      title: projectData.title,
+      description: projectData.description,
+      teacherId: '1', // Assuming the current teacher's ID is 1
+      groupId: projectData.groupId,
+      groupName: projectData.groupId === '1' ? 'Web Wizards' :
+                 projectData.groupId === '2' ? 'UX Designers' :
+                 projectData.groupId === '3' ? 'Data Explorers' :
+                 projectData.groupId === '4' ? 'Security Guardians' :
+                 'Mobile Developers',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      tasks: projectData.tasks.map((task: any, index: number) => ({
+        id: `task-${Date.now()}-${index}`,
+        projectId: `project-${Date.now()}`,
+        title: task.title,
+        description: task.description,
+        isCompleted: false,
+      })),
+    };
+
+    // Add the new project to the projects state
+    setProjects([newProject, ...projects]);
+    
+    // Close the modal
+    setIsCreateModalOpen(false);
+    
+    // Show success toast
+    toast({
+      title: 'Project Created',
+      description: `"${newProject.title}" has been assigned to ${newProject.groupName}.`,
+    });
+  };
 
   return (
     <div className="min-h-screen bg-background flex">
@@ -144,7 +185,10 @@ const TeacherProjects = () => {
                 </p>
               </div>
               
-              <button className="btn-primary inline-flex items-center gap-2 self-start sm:self-center">
+              <button 
+                onClick={() => setIsCreateModalOpen(true)}
+                className="btn-primary inline-flex items-center gap-2 self-start sm:self-center"
+              >
                 <Plus size={18} />
                 Create Project
               </button>
@@ -198,6 +242,13 @@ const TeacherProjects = () => {
           </div>
         </main>
       </div>
+      
+      {/* Create Project Modal */}
+      <CreateProjectModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onSubmit={handleCreateProject}
+      />
     </div>
   );
 };
