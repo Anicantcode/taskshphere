@@ -1,20 +1,21 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Navbar from '@/components/layout/Navbar';
 import Sidebar from '@/components/layout/Sidebar';
 import ProjectCard from '@/components/dashboard/ProjectCard';
 import { Project } from '@/lib/types';
 import { Search, Filter, ArrowUpDown, FolderKanban } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
 
 // Mock data
-const mockProjects: Project[] = [
+const allProjects: Project[] = [
   {
     id: '1',
     title: 'Web Development Basics',
     description: 'Learn the fundamentals of HTML, CSS, and JavaScript through hands-on projects.',
     teacherId: '1',
     groupId: '1',
-    groupName: 'Web Wizards',
+    groupName: 'Group 1',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     tasks: [
@@ -39,8 +40,8 @@ const mockProjects: Project[] = [
     title: 'Mobile App Design',
     description: 'Design and prototype a mobile application focusing on user experience and interface.',
     teacherId: '1',
-    groupId: '1',
-    groupName: 'Web Wizards',
+    groupId: '2',
+    groupName: 'Group 2',
     createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
     updatedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
     tasks: [
@@ -60,12 +61,102 @@ const mockProjects: Project[] = [
       },
     ],
   },
+  {
+    id: '3',
+    title: 'Data Science Fundamentals',
+    description: 'Introduction to data analysis, visualization, and basic machine learning concepts.',
+    teacherId: '1',
+    groupId: '3',
+    groupName: 'Group 3',
+    createdAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString(),
+    updatedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+    tasks: [
+      {
+        id: '7',
+        projectId: '3',
+        title: 'Data Cleaning',
+        description: 'Clean and prepare a dataset for analysis.',
+        isCompleted: true,
+      },
+      {
+        id: '8',
+        projectId: '3',
+        title: 'Exploratory Data Analysis',
+        description: 'Perform exploratory data analysis and create visualizations.',
+        isCompleted: false,
+      },
+    ],
+  },
+  {
+    id: '4',
+    title: 'Cybersecurity Workshop',
+    description: 'Explore common security vulnerabilities and implement protection strategies.',
+    teacherId: '1',
+    groupId: '4',
+    groupName: 'Group 4',
+    createdAt: new Date(Date.now() - 21 * 24 * 60 * 60 * 1000).toISOString(),
+    updatedAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
+    tasks: [
+      {
+        id: '9',
+        projectId: '4',
+        title: 'Network Security Audit',
+        description: 'Perform a basic security audit on a sample network.',
+        isCompleted: true,
+      },
+      {
+        id: '10',
+        projectId: '4',
+        title: 'Password Policy Implementation',
+        description: 'Design and document a secure password policy.',
+        isCompleted: true,
+      },
+    ],
+  },
+  {
+    id: '5',
+    title: 'Mobile App Development',
+    description: 'Create a fully functional mobile app using React Native.',
+    teacherId: '1',
+    groupId: '5',
+    groupName: 'Group 5',
+    createdAt: new Date(Date.now() - 28 * 24 * 60 * 60 * 1000).toISOString(),
+    updatedAt: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString(),
+    tasks: [
+      {
+        id: '11',
+        projectId: '5',
+        title: 'App Planning and Wireframing',
+        description: 'Plan the app structure and create wireframes.',
+        isCompleted: true,
+      },
+      {
+        id: '12',
+        projectId: '5',
+        title: 'App Implementation',
+        description: 'Build the React Native application.',
+        isCompleted: false,
+      },
+    ],
+  },
 ];
 
 const StudentProjects = () => {
+  const { user } = useAuth();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [projects, setProjects] = useState<Project[]>(mockProjects);
+  const [projects, setProjects] = useState<Project[]>([]);
+
+  // Extract the group ID from the student ID (assuming format: "student-X")
+  const studentId = user?.id || '';
+  const groupId = studentId.split('-')[1] || '';
+
+  // Filter projects based on the student's group ID
+  useEffect(() => {
+    // Filter all projects to only those assigned to this group
+    const groupProjects = allProjects.filter(project => project.groupId === groupId);
+    setProjects(groupProjects);
+  }, [groupId]);
 
   // Filter projects based on search query
   const filteredProjects = projects.filter(

@@ -34,13 +34,13 @@ import {
 } from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
 
-// Mock data for groups
-const mockGroups = [
-  { id: '1', name: 'Web Wizards' },
-  { id: '2', name: 'UX Designers' },
-  { id: '3', name: 'Data Explorers' },
-  { id: '4', name: 'Security Guardians' },
-  { id: '5', name: 'Mobile Developers' },
+// Student groups from the hardcoded login credentials
+const studentGroups = [
+  { id: '1', name: 'Group 1' },
+  { id: '2', name: 'Group 2' },
+  { id: '3', name: 'Group 3' },
+  { id: '4', name: 'Group 4' },
+  { id: '5', name: 'Group 5' },
 ];
 
 // Form schema
@@ -191,7 +191,7 @@ const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {mockGroups.map((group) => (
+                        {studentGroups.map((group) => (
                           <SelectItem key={group.id} value={group.id}>
                             {group.name}
                           </SelectItem>

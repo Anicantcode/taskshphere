@@ -16,7 +16,7 @@ const mockProjects: Project[] = [
     description: 'Learn the fundamentals of HTML, CSS, and JavaScript through hands-on projects.',
     teacherId: '1',
     groupId: '1',
-    groupName: 'Web Wizards',
+    groupName: 'Group 1',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     tasks: [
@@ -42,7 +42,7 @@ const mockProjects: Project[] = [
     description: 'Design and prototype a mobile application focusing on user experience and interface.',
     teacherId: '1',
     groupId: '2',
-    groupName: 'UX Designers',
+    groupName: 'Group 2',
     createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
     updatedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
     tasks: [
@@ -68,7 +68,7 @@ const mockProjects: Project[] = [
     description: 'Introduction to data analysis, visualization, and basic machine learning concepts.',
     teacherId: '1',
     groupId: '3',
-    groupName: 'Data Explorers',
+    groupName: 'Group 3',
     createdAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString(),
     updatedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
     tasks: [
@@ -94,7 +94,7 @@ const mockProjects: Project[] = [
     description: 'Explore common security vulnerabilities and implement protection strategies.',
     teacherId: '1',
     groupId: '4',
-    groupName: 'Security Guardians',
+    groupName: 'Group 4',
     createdAt: new Date(Date.now() - 21 * 24 * 60 * 60 * 1000).toISOString(),
     updatedAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
     tasks: [
@@ -139,11 +139,7 @@ const TeacherProjects = () => {
       description: projectData.description,
       teacherId: '1', // Assuming the current teacher's ID is 1
       groupId: projectData.groupId,
-      groupName: projectData.groupId === '1' ? 'Web Wizards' :
-                 projectData.groupId === '2' ? 'UX Designers' :
-                 projectData.groupId === '3' ? 'Data Explorers' :
-                 projectData.groupId === '4' ? 'Security Guardians' :
-                 'Mobile Developers',
+      groupName: `Group ${projectData.groupId}`, // Use the actual group name
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       tasks: projectData.tasks.map((task: any, index: number) => ({
