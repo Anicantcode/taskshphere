@@ -1,5 +1,4 @@
-
-import { Project, Task } from './types';
+import { Project, Task, Submission } from './types';
 
 // Mock data for projects
 export const allProjects: Project[] = [
@@ -161,4 +160,112 @@ export const upcomingTasks: Task[] = [
     isCompleted: false,
     dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
   },
+];
+
+// Mock submissions data
+export const allSubmissions: Submission[] = [
+  {
+    id: "sub-001",
+    taskId: "1",
+    groupId: "1",
+    content: "Completed portfolio with responsive design and modern UI",
+    contentType: "text",
+    status: "approved",
+    submittedAt: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString(),
+    reviewedAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString(),
+    feedback: "Excellent work! Your portfolio demonstrates good use of HTML and CSS principles."
+  },
+  {
+    id: "sub-002",
+    taskId: "2",
+    groupId: "1",
+    content: "JavaScript calculator with basic and scientific functions",
+    contentType: "text",
+    status: "pending",
+    submittedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+  },
+  {
+    id: "sub-003",
+    taskId: "4",
+    groupId: "2",
+    content: "User research report with personas and user journey maps",
+    contentType: "text",
+    status: "approved",
+    submittedAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
+    reviewedAt: new Date(Date.now() - 9 * 24 * 60 * 60 * 1000).toISOString(),
+    feedback: "Thorough research with actionable insights. Well done!"
+  },
+  {
+    id: "sub-004",
+    taskId: "5",
+    groupId: "2",
+    content: "Wireframes for mobile application",
+    contentType: "text",
+    status: "rejected",
+    submittedAt: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString(),
+    reviewedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+    feedback: "The wireframes need more detail and better consideration of user flow. Please revise."
+  },
+  {
+    id: "sub-005",
+    taskId: "7",
+    groupId: "3",
+    content: "Cleaned dataset with documentation of the process",
+    contentType: "text",
+    status: "approved",
+    submittedAt: new Date(Date.now() - 12 * 24 * 60 * 60 * 1000).toISOString(),
+    reviewedAt: new Date(Date.now() - 11 * 24 * 60 * 60 * 1000).toISOString(),
+    feedback: "Good data cleaning techniques. Documentation is clear and thorough."
+  },
+  {
+    id: "sub-006",
+    taskId: "8",
+    groupId: "3",
+    content: "Exploratory data analysis with visualizations",
+    contentType: "text",
+    status: "pending",
+    submittedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
+  },
+  {
+    id: "sub-007",
+    taskId: "9",
+    groupId: "4",
+    content: "Network security audit report",
+    contentType: "text",
+    status: "approved",
+    submittedAt: new Date(Date.now() - 16 * 24 * 60 * 60 * 1000).toISOString(),
+    reviewedAt: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString(),
+    feedback: "Comprehensive security audit with good recommendations."
+  },
+  {
+    id: "sub-008",
+    taskId: "10",
+    groupId: "4",
+    content: "Password policy documentation",
+    contentType: "text",
+    status: "rejected",
+    submittedAt: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString(),
+    reviewedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+    feedback: "The password policy needs to be more comprehensive and include multi-factor authentication considerations."
+  },
+  {
+    id: "sub-009",
+    taskId: "11",
+    groupId: "5",
+    content: "App planning document and wireframes",
+    contentType: "text",
+    status: "approved",
+    submittedAt: new Date(Date.now() - 18 * 24 * 60 * 60 * 1000).toISOString(),
+    reviewedAt: new Date(Date.now() - 17 * 24 * 60 * 60 * 1000).toISOString(),
+    feedback: "Well-thought-out app structure and clear wireframes."
+  },
+  {
+    id: "sub-010",
+    taskId: "12",
+    groupId: "5",
+    content: "React Native application initial build",
+    contentType: "text",
+    status: "pending",
+    submittedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+  }
 ];
