@@ -1,16 +1,7 @@
-
 import React, { useState } from 'react';
 import Navbar from '@/components/layout/Navbar';
 import Sidebar from '@/components/layout/Sidebar';
-import { 
-  Table,
-  TableBody,
-  TableCaption,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { allProjects } from '@/lib/mockData';
 import { Search, Users } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -20,7 +11,6 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 // Extract unique groups from the projects
 const extractGroups = () => {
   const groupsMap = new Map();
-  
   allProjects.forEach(project => {
     if (!groupsMap.has(project.groupId)) {
       groupsMap.set(project.groupId, {
@@ -29,35 +19,24 @@ const extractGroups = () => {
         projects: []
       });
     }
-    
     groupsMap.get(project.groupId).projects.push({
       id: project.id,
       title: project.title,
       description: project.description,
       tasksCount: project.tasks?.length || 0,
-      completedTasksCount: project.tasks?.filter(task => task.isCompleted).length || 0,
+      completedTasksCount: project.tasks?.filter(task => task.isCompleted).length || 0
     });
   });
-  
   return Array.from(groupsMap.values());
 };
-
 const TeacherGroups = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const groups = extractGroups();
-  
-  // Filter groups based on search query
-  const filteredGroups = groups.filter(
-    group =>
-      group.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      group.projects.some(project => 
-        project.title.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-  );
 
-  return (
-    <div className="min-h-screen bg-background flex">
+  // Filter groups based on search query
+  const filteredGroups = groups.filter(group => group.name.toLowerCase().includes(searchQuery.toLowerCase()) || group.projects.some(project => project.title.toLowerCase().includes(searchQuery.toLowerCase())));
+  return <div className="min-h-screen bg-background flex">
       <Sidebar isOpen={isSidebarOpen} />
       
       <div className="flex-1 flex flex-col ml-0 sm:ml-16 transition-all duration-300 ease-in-out">
@@ -79,33 +58,21 @@ const TeacherGroups = () => {
               <div className="flex flex-col sm:flex-row gap-4">
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                  <input
-                    type="text"
-                    placeholder="Search groups or projects..."
-                    value={searchQuery}
-                    onChange={e => setSearchQuery(e.target.value)}
-                    className="input-field pl-10"
-                  />
+                  <input type="text" placeholder="Search groups or projects..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="input-field pl-10" />
                 </div>
               </div>
             </div>
             
             {/* Groups List */}
-            {filteredGroups.length === 0 ? (
-              <div className="glass-card rounded-xl p-8 text-center">
+            {filteredGroups.length === 0 ? <div className="glass-card rounded-xl p-8 text-center">
                 <Users className="mx-auto h-12 w-12 text-muted-foreground/60" />
                 <h3 className="mt-4 text-xl font-semibold">No groups found</h3>
                 <p className="mt-2 text-muted-foreground">
-                  {searchQuery
-                    ? "We couldn't find any groups matching your search."
-                    : "No groups have been created yet."}
+                  {searchQuery ? "We couldn't find any groups matching your search." : "No groups have been created yet."}
                 </p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 gap-6">
-                {filteredGroups.map(group => (
-                  <Card key={group.id} className="overflow-hidden shadow-md hover:shadow-lg transition-shadow">
-                    <CardHeader className="pb-2 bg-primary/5">
+              </div> : <div className="grid grid-cols-1 gap-6">
+                {filteredGroups.map(group => <Card key={group.id} className="overflow-hidden shadow-md hover:shadow-lg transition-shadow">
+                    <CardHeader className="pb-2 bg-primary/5 mx-[108px] my-[4px] px-[50px] py-0 rounded-none">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
                           <div className="bg-primary/20 p-2.5 rounded-full">
@@ -138,8 +105,7 @@ const TeacherGroups = () => {
                               </TableRow>
                             </TableHeader>
                             <TableBody>
-                              {group.projects.map(project => (
-                                <TableRow key={project.id}>
+                              {group.projects.map(project => <TableRow key={project.id}>
                                   <TableCell className="font-medium">{project.title}</TableCell>
                                   <TableCell className="truncate max-w-[300px] hidden sm:table-cell">
                                     {project.description}
@@ -147,20 +113,15 @@ const TeacherGroups = () => {
                                   <TableCell>
                                     {project.completedTasksCount} / {project.tasksCount} completed
                                   </TableCell>
-                                </TableRow>
-                              ))}
+                                </TableRow>)}
                             </TableBody>
                           </Table>
                         </TabsContent>
                         
                         <TabsContent value="progress">
                           {group.projects.map(project => {
-                            const progressPercent = project.tasksCount > 0 
-                              ? Math.round((project.completedTasksCount / project.tasksCount) * 100) 
-                              : 0;
-                              
-                            return (
-                              <div key={project.id} className="mb-6">
+                      const progressPercent = project.tasksCount > 0 ? Math.round(project.completedTasksCount / project.tasksCount * 100) : 0;
+                      return <div key={project.id} className="mb-6">
                                 <div className="flex items-center justify-between mb-2">
                                   <h4 className="font-medium text-base">{project.title}</h4>
                                   <span className="text-sm text-muted-foreground">
@@ -171,21 +132,16 @@ const TeacherGroups = () => {
                                 <p className="text-sm text-muted-foreground mt-1">
                                   {project.completedTasksCount} of {project.tasksCount} tasks completed
                                 </p>
-                              </div>
-                            );
-                          })}
+                              </div>;
+                    })}
                         </TabsContent>
                       </Tabs>
                     </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )}
+                  </Card>)}
+              </div>}
           </div>
         </main>
       </div>
-    </div>
-  );
+    </div>;
 };
-
 export default TeacherGroups;
