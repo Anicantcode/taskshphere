@@ -104,16 +104,18 @@ const TeacherGroups = () => {
             ) : (
               <div className="grid grid-cols-1 gap-6">
                 {filteredGroups.map(group => (
-                  <Card key={group.id} className="overflow-hidden shadow-md">
-                    <CardHeader className="pb-2">
+                  <Card key={group.id} className="overflow-hidden shadow-md hover:shadow-lg transition-shadow">
+                    <CardHeader className="pb-2 bg-primary/5">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                          <div className="bg-primary/10 p-2 rounded-full">
+                          <div className="bg-primary/20 p-2.5 rounded-full">
                             <Users className="h-6 w-6 text-primary" />
                           </div>
-                          <CardTitle className="text-xl">{group.name}</CardTitle>
+                          <CardTitle className="text-2xl font-bold text-primary/90">
+                            {group.name}
+                          </CardTitle>
                         </div>
-                        <CardDescription className="text-sm mt-0">
+                        <CardDescription className="text-sm font-medium mt-0 bg-primary/10 px-3 py-1 rounded-full">
                           {group.projects.length} {group.projects.length === 1 ? 'Project' : 'Projects'} Assigned
                         </CardDescription>
                       </div>
