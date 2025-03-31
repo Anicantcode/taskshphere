@@ -10,6 +10,7 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import TeacherProjects from "./pages/teacher/Projects";
+import TeacherSubmissions from "./pages/teacher/Submissions";
 import StudentProjects from "./pages/student/Projects";
 import StudentTasks from "./pages/student/Tasks";
 import ProjectDetails from "./pages/ProjectDetails";
@@ -90,6 +91,14 @@ const App = () => (
                 element={
                   <ProtectedRoute requiredRole="teacher">
                     <TeacherProjects />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/teacher/submissions"
+                element={
+                  <ProtectedRoute requiredRole="teacher">
+                    <TeacherSubmissions />
                   </ProtectedRoute>
                 }
               />
