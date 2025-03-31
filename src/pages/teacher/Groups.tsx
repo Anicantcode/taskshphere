@@ -14,6 +14,8 @@ import {
 import { allProjects } from '@/lib/mockData';
 import { Search, Users } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Progress } from '@/components/ui/progress';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 
 // Extract unique groups from the projects
 const extractGroups = () => {
@@ -102,75 +104,78 @@ const TeacherGroups = () => {
             ) : (
               <div className="grid grid-cols-1 gap-6">
                 {filteredGroups.map(group => (
-                  <div key={group.id} className="glass-card p-6 rounded-lg">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4">
-                      <div className="flex items-center gap-3 mb-3 sm:mb-0">
-                        <div className="bg-primary/10 p-2 rounded-full">
-                          <Users className="h-6 w-6 text-primary" />
-                        </div>
-                        <h3 className="text-xl font-semibold">{group.name}</h3>
-                      </div>
-                      <div className="text-sm text-muted-foreground">
-                        {group.projects.length} {group.projects.length === 1 ? 'Project' : 'Projects'} Assigned
-                      </div>
-                    </div>
-                    
-                    <Tabs defaultValue="projects" className="w-full">
-                      <TabsList className="mb-4">
-                        <TabsTrigger value="projects">Assigned Projects</TabsTrigger>
-                        <TabsTrigger value="progress">Progress</TabsTrigger>
-                      </TabsList>
-                      
-                      <TabsContent value="projects">
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>Project</TableHead>
-                              <TableHead>Description</TableHead>
-                              <TableHead className="hidden md:table-cell">Tasks</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {group.projects.map(project => (
-                              <TableRow key={project.id}>
-                                <TableCell className="font-medium">{project.title}</TableCell>
-                                <TableCell className="truncate max-w-[200px] hidden sm:table-cell">
-                                  {project.description}
-                                </TableCell>
-                                <TableCell className="hidden md:table-cell">
-                                  {project.completedTasksCount} / {project.tasksCount} completed
-                                </TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      </TabsContent>
-                      
-                      <TabsContent value="progress">
-                        {group.projects.map(project => (
-                          <div key={project.id} className="mb-4">
-                            <h4 className="font-medium mb-2">{project.title}</h4>
-                            <div className="h-2 bg-muted rounded-full overflow-hidden">
-                              <div 
-                                className="h-full bg-primary rounded-full"
-                                style={{ 
-                                  width: `${project.tasksCount > 0 
-                                    ? (project.completedTasksCount / project.tasksCount) * 100 
-                                    : 0}%` 
-                                }}
-                              ></div>
-                            </div>
-                            <p className="text-sm text-muted-foreground mt-1">
-                              {project.completedTasksCount} of {project.tasksCount} tasks completed
-                              ({project.tasksCount > 0 
-                                ? Math.round((project.completedTasksCount / project.tasksCount) * 100) 
-                                : 0}%)
-                            </p>
+                  <Card key={group.id} className="overflow-hidden shadow-md">
+                    <CardHeader className="pb-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="bg-primary/10 p-2 rounded-full">
+                            <Users className="h-6 w-6 text-primary" />
                           </div>
-                        ))}
-                      </TabsContent>
-                    </Tabs>
-                  </div>
+                          <CardTitle className="text-xl">{group.name}</CardTitle>
+                        </div>
+                        <CardDescription className="text-sm mt-0">
+                          {group.projects.length} {group.projects.length === 1 ? 'Project' : 'Projects'} Assigned
+                        </CardDescription>
+                      </div>
+                    </CardHeader>
+                    
+                    <CardContent className="pt-4">
+                      <Tabs defaultValue="projects" className="w-full">
+                        <TabsList className="mb-4">
+                          <TabsTrigger value="projects">Assigned Projects</TabsTrigger>
+                          <TabsTrigger value="progress">Progress</TabsTrigger>
+                        </TabsList>
+                        
+                        <TabsContent value="projects">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>Project</TableHead>
+                                <TableHead className="hidden sm:table-cell">Description</TableHead>
+                                <TableHead>Tasks</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {group.projects.map(project => (
+                                <TableRow key={project.id}>
+                                  <TableCell className="font-medium">{project.title}</TableCell>
+                                  <TableCell className="truncate max-w-[300px] hidden sm:table-cell">
+                                    {project.description}
+                                  </TableCell>
+                                  <TableCell>
+                                    {project.completedTasksCount} / {project.tasksCount} completed
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </TabsContent>
+                        
+                        <TabsContent value="progress">
+                          {group.projects.map(project => {
+                            const progressPercent = project.tasksCount > 0 
+                              ? Math.round((project.completedTasksCount / project.tasksCount) * 100) 
+                              : 0;
+                              
+                            return (
+                              <div key={project.id} className="mb-6">
+                                <div className="flex items-center justify-between mb-2">
+                                  <h4 className="font-medium text-base">{project.title}</h4>
+                                  <span className="text-sm text-muted-foreground">
+                                    {progressPercent}%
+                                  </span>
+                                </div>
+                                <Progress value={progressPercent} className="h-2" />
+                                <p className="text-sm text-muted-foreground mt-1">
+                                  {project.completedTasksCount} of {project.tasksCount} tasks completed
+                                </p>
+                              </div>
+                            );
+                          })}
+                        </TabsContent>
+                      </Tabs>
+                    </CardContent>
+                  </Card>
                 ))}
               </div>
             )}
