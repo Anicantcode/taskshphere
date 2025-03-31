@@ -7,12 +7,17 @@ import { Project } from '@/lib/types';
 import { Search, Filter, ArrowUpDown, FolderKanban } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { allProjects } from '@/lib/mockData';
+import AssignedProjectsModal from '@/components/dashboard/AssignedProjectsModal';
+import { useLocation } from 'react-router-dom';
+import { toast } from '@/hooks/use-toast';
 
 const StudentProjects = () => {
   const { user } = useAuth();
+  const location = useLocation();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [projects, setProjects] = useState<Project[]>([]);
+  const [showModal, setShowModal] = useState(false);
 
   // Extract the group ID from the student ID (assuming format: "student-X")
   const studentId = user?.id || '';
@@ -23,6 +28,19 @@ const StudentProjects = () => {
     // Filter all projects to only those assigned to this group
     const groupProjects = allProjects.filter(project => project.groupId === groupId);
     setProjects(groupProjects);
+    
+    // Show notification if coming from login (check URL parameters or sessionStorage)
+    const showNotification = sessionStorage.getItem('showProjectNotification');
+    if (showNotification === 'true' && groupProjects.length > 0) {
+      setShowModal(true);
+      sessionStorage.removeItem('showProjectNotification');
+      
+      // Also show a toast notification
+      toast({
+        title: "Projects Assigned",
+        description: `You have ${groupProjects.length} project(s) assigned to your group.`,
+      });
+    }
   }, [groupId]);
 
   // Filter projects based on search query
@@ -96,6 +114,13 @@ const StudentProjects = () => {
           </div>
         </main>
       </div>
+      
+      {/* Assigned Projects Modal */}
+      <AssignedProjectsModal 
+        isOpen={showModal}
+        onClose={() => setShowModal(false)}
+        projects={projects}
+      />
     </div>
   );
 };
