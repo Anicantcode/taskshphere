@@ -11,10 +11,12 @@ import {
   Trophy,
   Users,
   Settings,
+  X
 } from 'lucide-react';
 
 interface SidebarProps {
   isOpen: boolean;
+  toggleSidebar: () => void;
 }
 
 interface SidebarLinkProps {
@@ -51,7 +53,7 @@ const SidebarLink: React.FC<SidebarLinkProps> = ({
   );
 };
 
-const Sidebar: React.FC<SidebarProps> = ({ isOpen }) => {
+const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
   const { user } = useAuth();
   const isTeacher = user?.role === 'teacher';
 
@@ -81,13 +83,22 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen }) => {
       )}
     >
       <div className="flex flex-col h-full overflow-y-auto py-4">
-        <div className="px-3 py-2">
+        <div className="px-3 py-2 flex items-center justify-between">
           <div className="flex items-center h-12">
             <div className="w-8 h-8 bg-primary rounded-md flex items-center justify-center">
               <span className="text-primary-foreground font-bold">TM</span>
             </div>
             <span className="ml-2 font-semibold text-sidebar-foreground">TaskMaster</span>
           </div>
+          
+          {/* Close button for sidebar */}
+          <button
+            onClick={toggleSidebar}
+            className="p-2 rounded-md hover:bg-accent transition-colors"
+            aria-label="Close sidebar"
+          >
+            <X size={20} />
+          </button>
         </div>
 
         <div className="px-3 pt-4">
