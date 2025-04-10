@@ -25,13 +25,13 @@ const Navbar: React.FC<NavbarProps> = ({ isSidebarOpen, toggleSidebar }) => {
         <div className="flex items-center">
           <button
             onClick={toggleSidebar}
-            className="mr-4 p-2 rounded-md hover:bg-accent transition-colors md:inline-flex sm:hidden"
+            className="p-2 rounded-md hover:bg-accent transition-colors"
             aria-label={isSidebarOpen ? "Close sidebar" : "Open sidebar"}
           >
             {isSidebarOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
           
-          <a href="/dashboard" className="flex items-center space-x-2">
+          <a href="/dashboard" className="flex items-center space-x-2 ml-2">
             <div className="w-8 h-8 bg-primary rounded-md flex items-center justify-center">
               <span className="text-primary-foreground font-bold">TM</span>
             </div>

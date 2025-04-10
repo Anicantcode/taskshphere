@@ -14,7 +14,7 @@ import { allProjects, upcomingTasks } from '@/lib/mockData';
 const Dashboard = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [projects, setProjects] = useState<Project[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -24,6 +24,18 @@ const Dashboard = () => {
   // Extract the group ID from the student ID (assuming format: "student-X")
   const studentId = user?.id || '';
   const groupId = studentId.split('-')[1] || '';
+
+  // Toggle sidebar
+  const toggleSidebar = () => {
+    setIsSidebarOpen(!isSidebarOpen);
+  };
+
+  // Close sidebar when clicking outside on mobile
+  const handleOverlayClick = () => {
+    if (isSidebarOpen) {
+      setIsSidebarOpen(false);
+    }
+  };
 
   useEffect(() => {
     // Simulate data loading
@@ -116,10 +128,19 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen bg-background flex">
+      {/* Sidebar overlay */}
+      {isSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-30 md:hidden" 
+          onClick={handleOverlayClick}
+          aria-hidden="true"
+        />
+      )}
+      
       <Sidebar isOpen={isSidebarOpen} />
       
-      <div className="flex-1 flex flex-col ml-0 sm:ml-16 transition-all duration-300 ease-in-out">
-        <Navbar isSidebarOpen={isSidebarOpen} toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} />
+      <div className="flex-1 flex flex-col transition-all duration-300 ease-in-out w-full">
+        <Navbar isSidebarOpen={isSidebarOpen} toggleSidebar={toggleSidebar} />
         
         <main className="flex-1 py-8 px-6">
           <div className="max-w-7xl mx-auto animate-fadeIn">
