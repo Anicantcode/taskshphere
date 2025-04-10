@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import Navbar from '@/components/layout/Navbar';
 import Sidebar from '@/components/layout/Sidebar';
@@ -117,10 +116,14 @@ const mockProjects: Project[] = [
 ];
 
 const TeacherProjects = () => {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [projects, setProjects] = useState<Project[]>(mockProjects);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+
+  const toggleSidebar = () => {
+    setIsSidebarOpen(!isSidebarOpen);
+  };
 
   // Filter projects based on search query
   const filteredProjects = projects.filter(
@@ -166,10 +169,10 @@ const TeacherProjects = () => {
 
   return (
     <div className="min-h-screen bg-background flex">
-      <Sidebar isOpen={isSidebarOpen} />
+      <Sidebar isOpen={isSidebarOpen} toggleSidebar={toggleSidebar} />
       
       <div className="flex-1 flex flex-col ml-0 sm:ml-16 transition-all duration-300 ease-in-out">
-        <Navbar isSidebarOpen={isSidebarOpen} toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} />
+        <Navbar isSidebarOpen={isSidebarOpen} toggleSidebar={toggleSidebar} />
         
         <main className="flex-1 py-8 px-6 animate-fadeIn">
           <div className="max-w-7xl mx-auto">

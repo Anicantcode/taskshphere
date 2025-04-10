@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '@/components/layout/Navbar';
@@ -39,18 +38,22 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { FileText, FolderKanban, Check, X, Users } from 'lucide-react';
+import { Search, Filter, ArrowUpDown, File, CheckCircle, Clock } from 'lucide-react';
 import { Submission, Task } from '@/lib/types';
 
-// Import mock data
 import { allSubmissions } from '@/lib/mockData';
 
 const TeacherSubmissions = () => {
   const navigate = useNavigate();
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
   
-  // Filter and paginate submissions
+  const toggleSidebar = () => {
+    setIsSidebarOpen(!isSidebarOpen);
+  };
+
   const filteredSubmissions = allSubmissions.filter(submission => 
     statusFilter === 'all' || submission.status === statusFilter
   );
@@ -76,11 +79,11 @@ const TeacherSubmissions = () => {
 
   return (
     <div className="min-h-screen bg-background flex">
-      <Sidebar isOpen={isSidebarOpen} />
+      <Sidebar isOpen={isSidebarOpen} toggleSidebar={toggleSidebar} />
       <div className="flex-1 flex flex-col ml-0 sm:ml-16 transition-all duration-300 ease-in-out">
         <Navbar 
           isSidebarOpen={isSidebarOpen} 
-          toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} 
+          toggleSidebar={toggleSidebar} 
         />
         <main className="flex-1 py-8 px-6">
           <div className="max-w-7xl mx-auto">

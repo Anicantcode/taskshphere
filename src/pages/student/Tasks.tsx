@@ -11,9 +11,13 @@ import { allProjects } from '@/lib/mockData';
 const StudentTasks = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [tasks, setTasks] = useState<Task[]>([]);
+  
+  const toggleSidebar = () => {
+    setIsSidebarOpen(!isSidebarOpen);
+  };
   
   // Extract the group ID from the student ID (assuming format: "student-X")
   const studentId = user?.id || '';
@@ -49,10 +53,10 @@ const StudentTasks = () => {
 
   return (
     <div className="min-h-screen bg-background flex">
-      <Sidebar isOpen={isSidebarOpen} />
+      <Sidebar isOpen={isSidebarOpen} toggleSidebar={toggleSidebar} />
       
       <div className="flex-1 flex flex-col ml-0 sm:ml-16 transition-all duration-300 ease-in-out">
-        <Navbar isSidebarOpen={isSidebarOpen} toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} />
+        <Navbar isSidebarOpen={isSidebarOpen} toggleSidebar={toggleSidebar} />
         
         <main className="flex-1 py-8 px-6 animate-fadeIn">
           <div className="max-w-7xl mx-auto">

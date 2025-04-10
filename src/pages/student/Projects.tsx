@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import Navbar from '@/components/layout/Navbar';
 import Sidebar from '@/components/layout/Sidebar';
@@ -14,10 +13,14 @@ import { toast } from '@/hooks/use-toast';
 const StudentProjects = () => {
   const { user } = useAuth();
   const location = useLocation();
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [projects, setProjects] = useState<Project[]>([]);
   const [showModal, setShowModal] = useState(false);
+
+  const toggleSidebar = () => {
+    setIsSidebarOpen(!isSidebarOpen);
+  };
 
   // Extract the group ID from the student ID (assuming format: "student-X")
   const studentId = user?.id || '';
@@ -52,10 +55,10 @@ const StudentProjects = () => {
 
   return (
     <div className="min-h-screen bg-background flex">
-      <Sidebar isOpen={isSidebarOpen} />
+      <Sidebar isOpen={isSidebarOpen} toggleSidebar={toggleSidebar} />
       
       <div className="flex-1 flex flex-col ml-0 sm:ml-16 transition-all duration-300 ease-in-out">
-        <Navbar isSidebarOpen={isSidebarOpen} toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} />
+        <Navbar isSidebarOpen={isSidebarOpen} toggleSidebar={toggleSidebar} />
         
         <main className="flex-1 py-8 px-6 animate-fadeIn">
           <div className="max-w-7xl mx-auto">

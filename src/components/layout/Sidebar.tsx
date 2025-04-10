@@ -24,6 +24,7 @@ interface SidebarLinkProps {
   icon: React.ReactNode;
   label: string;
   exact?: boolean;
+  toggleSidebar: () => void;
 }
 
 const SidebarLink: React.FC<SidebarLinkProps> = ({
@@ -31,11 +32,17 @@ const SidebarLink: React.FC<SidebarLinkProps> = ({
   icon,
   label,
   exact = false,
+  toggleSidebar,
 }) => {
   const location = useLocation();
   const isActive = exact
     ? location.pathname === href
     : location.pathname.startsWith(href);
+
+  const handleClick = () => {
+    // Close sidebar when navigating to a new page
+    toggleSidebar();
+  };
 
   return (
     <Link
@@ -46,6 +53,7 @@ const SidebarLink: React.FC<SidebarLinkProps> = ({
           ? 'bg-primary/10 text-primary'
           : 'text-foreground/70 hover:bg-accent hover:text-foreground'
       )}
+      onClick={handleClick}
     >
       <span className="flex-shrink-0">{icon}</span>
       <span className="text-sm font-medium">{label}</span>
@@ -113,6 +121,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
                 icon={link.icon}
                 label={link.label}
                 exact={link.exact}
+                toggleSidebar={toggleSidebar}
               />
             ))}
           </nav>
@@ -127,6 +136,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
               href="/settings"
               icon={<Settings size={20} />}
               label="Settings"
+              toggleSidebar={toggleSidebar}
             />
           </nav>
         </div>

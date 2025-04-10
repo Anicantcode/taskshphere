@@ -8,7 +8,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 
-// Extract unique groups from the projects
 const extractGroups = () => {
   const groupsMap = new Map();
   allProjects.forEach(project => {
@@ -29,18 +28,23 @@ const extractGroups = () => {
   });
   return Array.from(groupsMap.values());
 };
+
 const TeacherGroups = () => {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const groups = extractGroups();
 
-  // Filter groups based on search query
+  const toggleSidebar = () => {
+    setIsSidebarOpen(!isSidebarOpen);
+  };
+
   const filteredGroups = groups.filter(group => group.name.toLowerCase().includes(searchQuery.toLowerCase()) || group.projects.some(project => project.title.toLowerCase().includes(searchQuery.toLowerCase())));
+
   return <div className="min-h-screen bg-background flex">
-      <Sidebar isOpen={isSidebarOpen} />
+      <Sidebar isOpen={isSidebarOpen} toggleSidebar={toggleSidebar} />
       
       <div className="flex-1 flex flex-col ml-0 sm:ml-16 transition-all duration-300 ease-in-out">
-        <Navbar isSidebarOpen={isSidebarOpen} toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} />
+        <Navbar isSidebarOpen={isSidebarOpen} toggleSidebar={toggleSidebar} />
         
         <main className="flex-1 py-8 px-6 animate-fadeIn">
           <div className="max-w-7xl mx-auto">
@@ -53,7 +57,6 @@ const TeacherGroups = () => {
               </div>
             </div>
             
-            {/* Search */}
             <div className="mb-8 glass-card rounded-lg p-4">
               <div className="flex flex-col sm:flex-row gap-4">
                 <div className="relative flex-1">
@@ -63,7 +66,6 @@ const TeacherGroups = () => {
               </div>
             </div>
             
-            {/* Groups List */}
             {filteredGroups.length === 0 ? <div className="glass-card rounded-xl p-8 text-center">
                 <Users className="mx-auto h-12 w-12 text-muted-foreground/60" />
                 <h3 className="mt-4 text-xl font-semibold">No groups found</h3>
@@ -144,4 +146,5 @@ const TeacherGroups = () => {
       </div>
     </div>;
 };
+
 export default TeacherGroups;
