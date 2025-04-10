@@ -6,7 +6,6 @@ import { cn } from '@/lib/utils';
 import {
   LayoutDashboard,
   FolderKanban,
-  ListTodo,
   ClipboardCheck,
   Trophy,
   Users,
@@ -68,7 +67,6 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
   const teacherLinks = [
     { href: '/dashboard', icon: <LayoutDashboard size={20} />, label: 'Dashboard', exact: true },
     { href: '/teacher/projects', icon: <FolderKanban size={20} />, label: 'Projects' },
-    { href: '/teacher/tasks', icon: <ListTodo size={20} />, label: 'Tasks' },
     { href: '/teacher/submissions', icon: <ClipboardCheck size={20} />, label: 'Submissions' },
     { href: '/teacher/groups', icon: <Users size={20} />, label: 'Groups' },
   ];
@@ -76,7 +74,6 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
   const studentLinks = [
     { href: '/dashboard', icon: <LayoutDashboard size={20} />, label: 'Dashboard', exact: true },
     { href: '/student/projects', icon: <FolderKanban size={20} />, label: 'Projects' },
-    { href: '/student/tasks', icon: <ListTodo size={20} />, label: 'Tasks' },
     { href: '/student/leaderboard', icon: <Trophy size={20} />, label: 'Leaderboard' },
   ];
 
