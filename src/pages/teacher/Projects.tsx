@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import Navbar from '@/components/layout/Navbar';
 import Sidebar from '@/components/layout/Sidebar';
@@ -123,6 +122,7 @@ const TeacherProjects = () => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
@@ -245,7 +245,36 @@ const TeacherProjects = () => {
 
   // Handle project creation with Supabase integration
   const handleCreateProject = async (projectData: any) => {
+    console.log("Creating project with data:", projectData);
+    setIsSubmitting(true);
+    
     try {
+      // First check if the group exists
+      const { data: groupExists, error: groupError } = await supabase
+        .from('groups')
+        .select('id, name')
+        .eq('id', projectData.groupId)
+        .single();
+      
+      if (groupError) {
+        console.log("Group doesn't exist, attempting to create it");
+        // If group doesn't exist in the database yet (could be using mock data), create it
+        const { data: newGroup, error: createGroupError } = await supabase
+          .from('groups')
+          .insert({
+            id: projectData.groupId,
+            name: `Group ${projectData.groupId}`,
+            created_by: '1' // Using a default teacher ID
+          })
+          .select()
+          .single();
+          
+        if (createGroupError) {
+          console.error("Error creating group:", createGroupError);
+          // Continue anyway, as the group might exist but we don't have permission to see it
+        }
+      }
+      
       // Insert project into Supabase
       const { data: projectInsert, error: projectError } = await supabase
         .from('projects')
@@ -318,7 +347,7 @@ const TeacherProjects = () => {
       };
       
       // Trigger notification for students
-      localStorage.setItem('newProjectAssigned', 'true');
+      sessionStorage.setItem('showProjectNotification', 'true');
       
       // Update the UI
       setProjects([newProject, ...projects]);
@@ -331,13 +360,15 @@ const TeacherProjects = () => {
         title: 'Project Created',
         description: `"${newProject.title}" has been assigned to ${newProject.groupName}.`,
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating project:', error);
       toast({
         title: 'Error Creating Project',
-        description: 'There was an error creating your project. Please try again.',
+        description: error.message || 'There was an error creating your project. Please try again.',
         variant: 'destructive',
       });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -361,9 +392,19 @@ const TeacherProjects = () => {
               <button 
                 onClick={() => setIsCreateModalOpen(true)}
                 className="btn-primary inline-flex items-center gap-2 self-start sm:self-center"
+                disabled={isSubmitting}
               >
-                <Plus size={18} />
-                Create Project
+                {isSubmitting ? (
+                  <>
+                    <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    Creating...
+                  </>
+                ) : (
+                  <>
+                    <Plus size={18} />
+                    Create Project
+                  </>
+                )}
               </button>
             </div>
             

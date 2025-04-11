@@ -74,6 +74,8 @@ const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
   onClose,
   onSubmit,
 }) => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -84,9 +86,10 @@ const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
     },
   });
 
-  const handleSubmit = (values: FormValues) => {
+  const handleSubmit = async (values: FormValues) => {
     try {
-      onSubmit(values);
+      setIsSubmitting(true);
+      await onSubmit(values);
       form.reset();
       toast({
         title: 'Project created',
@@ -98,6 +101,8 @@ const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
         description: 'There was an error creating your project. Please try again.',
         variant: 'destructive',
       });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -314,7 +319,14 @@ const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
               <Button type="button" variant="outline" onClick={onClose}>
                 Cancel
               </Button>
-              <Button type="submit">Create Project</Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? (
+                  <>
+                    <div className="h-4 w-4 mr-2 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
+                    Creating...
+                  </>
+                ) : 'Create Project'}
+              </Button>
             </DialogFooter>
           </form>
         </Form>

@@ -34,6 +34,8 @@ const StudentProjects = () => {
     const fetchProjects = async () => {
       setIsLoading(true);
       try {
+        console.log('Fetching projects for group ID:', groupId);
+        
         // First try to fetch from Supabase
         const { data: supabaseProjects, error } = await supabase
           .from('projects')
@@ -55,12 +57,16 @@ const StudentProjects = () => {
           `)
           .eq('group_id', groupId);
 
+        console.log('Supabase response:', { supabaseProjects, error });
+
         if (error) {
           console.error('Error fetching projects:', error);
           throw error;
         }
 
         if (supabaseProjects && supabaseProjects.length > 0) {
+          console.log('Projects found in Supabase:', supabaseProjects);
+          
           // Transform Supabase data to match our Project type
           const formattedProjects: Project[] = supabaseProjects.map(proj => ({
             id: proj.id,
@@ -68,6 +74,7 @@ const StudentProjects = () => {
             description: proj.description || '',
             teacherId: proj.teacher_id,
             groupId: proj.group_id,
+            groupName: `Group ${proj.group_id}`,
             createdAt: proj.created_at,
             updatedAt: proj.updated_at,
             tasks: proj.tasks?.map(task => ({
@@ -81,11 +88,13 @@ const StudentProjects = () => {
           }));
           
           setProjects(formattedProjects);
+          console.log('Formatted projects:', formattedProjects);
         } else {
           // Fallback to mock data if no Supabase projects
           console.log('No projects found in Supabase, using mock data');
           const groupProjects = allProjects.filter(project => project.groupId === groupId);
           setProjects(groupProjects);
+          console.log('Using mock data:', groupProjects);
         }
       } catch (error) {
         console.error('Failed to fetch projects, using mock data:', error);
