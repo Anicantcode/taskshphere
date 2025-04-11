@@ -1,22 +1,82 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import Navbar from '@/components/layout/Navbar';
 import Sidebar from '@/components/layout/Sidebar';
-import { Project } from '@/lib/types';
-import { ArrowLeft, Calendar, Users, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { Project, Task } from '@/lib/types';
+import { ArrowLeft, Calendar, Users, CheckCircle, XCircle, Clock, AlertTriangle } from 'lucide-react';
+import { format, isAfter, parseISO, formatDistance } from 'date-fns';
 
 // Import the mock projects data
 import { allProjects } from '@/lib/mockData';
+
+const TaskItem = ({ task }: { task: Task }) => {
+  const isDueDate = task.dueDate ? parseISO(task.dueDate) : null;
+  const isPastDue = isDueDate ? isAfter(new Date(), isDueDate) : false;
+  
+  return (
+    <div className="glass-card rounded-xl p-5 hover:shadow-md transition-shadow">
+      <div className="flex items-start justify-between">
+        <div className="flex-1">
+          <h3 className="font-semibold text-lg flex items-center">
+            {task.isCompleted ? (
+              <CheckCircle size={18} className="mr-2 text-green-500" />
+            ) : (
+              <Clock size={18} className="mr-2 text-amber-500" />
+            )}
+            {task.title}
+          </h3>
+          <p className="mt-2 text-muted-foreground">{task.description}</p>
+          
+          {task.dueDate && (
+            <div className={`mt-3 flex items-center text-sm ${
+              isPastDue && !task.isCompleted ? 'text-red-500' : 'text-muted-foreground'
+            }`}>
+              {isPastDue && !task.isCompleted ? (
+                <AlertTriangle size={14} className="mr-1" />
+              ) : (
+                <Calendar size={14} className="mr-1" />
+              )}
+              <span>
+                Due: {format(parseISO(task.dueDate), 'MMM d, yyyy')}
+                {isPastDue && !task.isCompleted && ' (Overdue)'}
+                {!isPastDue && !task.isCompleted && (
+                  <span className="ml-1">
+                    ({formatDistance(parseISO(task.dueDate), new Date(), { addSuffix: true })})
+                  </span>
+                )}
+              </span>
+            </div>
+          )}
+        </div>
+        
+        <div className="flex-shrink-0 ml-4">
+          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+            task.isCompleted 
+              ? 'bg-green-100 text-green-800 dark:bg-green-800/20 dark:text-green-400' 
+              : isPastDue
+                ? 'bg-red-100 text-red-800 dark:bg-red-800/20 dark:text-red-400'
+                : 'bg-amber-100 text-amber-800 dark:bg-amber-800/20 dark:text-amber-400'
+          }`}>
+            {task.isCompleted ? 'Completed' : isPastDue ? 'Overdue' : 'In Progress'}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const ProjectDetails = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
+  
+  const toggleSidebar = () => {
+    setIsSidebarOpen(!isSidebarOpen);
+  };
 
   useEffect(() => {
     // Find the project in our mock data
@@ -32,7 +92,7 @@ const ProjectDetails = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex">
-        <Sidebar isOpen={isSidebarOpen} />
+        <Sidebar isOpen={isSidebarOpen} toggleSidebar={toggleSidebar} />
         <div className="flex-1 flex flex-col ml-0 sm:ml-16 transition-all duration-300 ease-in-out">
           <Navbar isSidebarOpen={isSidebarOpen} toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} />
           <main className="flex-1 py-8 px-6">
@@ -50,7 +110,7 @@ const ProjectDetails = () => {
   if (!project) {
     return (
       <div className="min-h-screen bg-background flex">
-        <Sidebar isOpen={isSidebarOpen} />
+        <Sidebar isOpen={isSidebarOpen} toggleSidebar={toggleSidebar} />
         <div className="flex-1 flex flex-col ml-0 sm:ml-16 transition-all duration-300 ease-in-out">
           <Navbar isSidebarOpen={isSidebarOpen} toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} />
           <main className="flex-1 py-8 px-6">
@@ -89,7 +149,7 @@ const ProjectDetails = () => {
 
   return (
     <div className="min-h-screen bg-background flex">
-      <Sidebar isOpen={isSidebarOpen} />
+      <Sidebar isOpen={isSidebarOpen} toggleSidebar={toggleSidebar} />
       <div className="flex-1 flex flex-col ml-0 sm:ml-16 transition-all duration-300 ease-in-out">
         <Navbar isSidebarOpen={isSidebarOpen} toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} />
         <main className="flex-1 py-8 px-6 animate-fadeIn">
@@ -133,45 +193,10 @@ const ProjectDetails = () => {
             
             <h2 className="text-2xl font-semibold mb-4">Tasks</h2>
             
-            {project.tasks && project.tasks.length > 0 ? (
+            {project?.tasks && project.tasks.length > 0 ? (
               <div className="grid gap-4">
                 {project.tasks.map((task) => (
-                  <div key={task.id} className="glass-card rounded-xl p-5 hover:shadow-md transition-shadow">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <h3 className="font-semibold text-lg flex items-center">
-                          {task.isCompleted ? (
-                            <CheckCircle size={18} className="mr-2 text-green-500" />
-                          ) : (
-                            <Clock size={18} className="mr-2 text-amber-500" />
-                          )}
-                          {task.title}
-                        </h3>
-                        <p className="mt-2 text-muted-foreground">{task.description}</p>
-                        
-                        {task.dueDate && (
-                          <div className="mt-3 flex items-center text-sm text-muted-foreground">
-                            <Calendar size={14} className="mr-1" />
-                            <span>Due: {new Date(task.dueDate).toLocaleDateString('en-US', {
-                              month: 'short',
-                              day: 'numeric',
-                              year: 'numeric',
-                            })}</span>
-                          </div>
-                        )}
-                      </div>
-                      
-                      <div className="flex-shrink-0 ml-4">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          task.isCompleted 
-                            ? 'bg-green-100 text-green-800 dark:bg-green-800/20 dark:text-green-400' 
-                            : 'bg-amber-100 text-amber-800 dark:bg-amber-800/20 dark:text-amber-400'
-                        }`}>
-                          {task.isCompleted ? 'Completed' : 'In Progress'}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
+                  <TaskItem key={task.id} task={task} />
                 ))}
               </div>
             ) : (

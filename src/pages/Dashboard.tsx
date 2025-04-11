@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -137,7 +136,7 @@ const Dashboard = () => {
         />
       )}
       
-      <Sidebar isOpen={isSidebarOpen} />
+      <Sidebar isOpen={isSidebarOpen} toggleSidebar={toggleSidebar} />
       
       <div className="flex-1 flex flex-col transition-all duration-300 ease-in-out w-full">
         <Navbar isSidebarOpen={isSidebarOpen} toggleSidebar={toggleSidebar} />

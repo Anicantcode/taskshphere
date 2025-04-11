@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import Navbar from '@/components/layout/Navbar';
 import Sidebar from '@/components/layout/Sidebar';
@@ -45,6 +46,23 @@ const StudentProjects = () => {
       });
     }
   }, [groupId]);
+
+  // Listen for new project assignments (simulated)
+  useEffect(() => {
+    // In a real application, this would be a websocket or polling
+    const checkForNewProjects = setInterval(() => {
+      const hasNewProject = localStorage.getItem('newProjectAssigned');
+      if (hasNewProject === 'true') {
+        toast({
+          title: "New Project Assigned",
+          description: "Your group has been assigned a new project. Refresh to see details.",
+        });
+        localStorage.removeItem('newProjectAssigned');
+      }
+    }, 5000);
+    
+    return () => clearInterval(checkForNewProjects);
+  }, []);
 
   // Filter projects based on search query
   const filteredProjects = projects.filter(

@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import Navbar from '@/components/layout/Navbar';
 import Sidebar from '@/components/layout/Sidebar';
@@ -150,6 +151,7 @@ const TeacherProjects = () => {
         projectId: `project-${Date.now()}`,
         title: task.title,
         description: task.description,
+        dueDate: task.dueDate ? task.dueDate.toISOString() : undefined,
         isCompleted: false,
       })),
     };

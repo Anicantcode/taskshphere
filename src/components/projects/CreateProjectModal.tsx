@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, Calendar } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -33,6 +33,10 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { cn } from '@/lib/utils';
+import { Calendar as CalendarComponent } from '@/components/ui/calendar';
+import { format } from 'date-fns';
 
 // Student groups from the hardcoded login credentials
 const studentGroups = [
@@ -52,6 +56,7 @@ const formSchema = z.object({
     z.object({
       title: z.string().min(3, 'Task title must be at least 3 characters'),
       description: z.string(),
+      dueDate: z.date().optional(),
     })
   ).min(1, 'Add at least one task'),
 });
@@ -79,8 +84,6 @@ const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
     },
   });
 
-  const { fields, append, remove } = form.control._formValues.tasks;
-
   const handleSubmit = (values: FormValues) => {
     try {
       onSubmit(values);
@@ -100,20 +103,17 @@ const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
 
   // Add a new empty task
   const addTask = () => {
-    if (form.getValues().tasks) {
-      form.setValue('tasks', [
-        ...form.getValues().tasks,
-        { title: '', description: '' },
-      ]);
-    } else {
-      form.setValue('tasks', [{ title: '', description: '' }]);
-    }
+    const currentTasks = form.getValues().tasks || [];
+    form.setValue('tasks', [
+      ...currentTasks,
+      { title: '', description: '' },
+    ]);
   };
 
   // Remove a task by index
   const removeTask = (index: number) => {
     const currentTasks = form.getValues().tasks;
-    if (currentTasks.length > 1) {
+    if (currentTasks && currentTasks.length > 1) {
       form.setValue(
         'tasks',
         currentTasks.filter((_, i) => i !== index)
@@ -261,6 +261,46 @@ const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
                               {...field}
                             />
                           </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name={`tasks.${index}.dueDate`}
+                      render={({ field }) => (
+                        <FormItem className="flex flex-col">
+                          <FormLabel>Due Date (Optional)</FormLabel>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <FormControl>
+                                <Button
+                                  variant={"outline"}
+                                  className={cn(
+                                    "w-full pl-3 text-left font-normal",
+                                    !field.value && "text-muted-foreground"
+                                  )}
+                                >
+                                  {field.value ? (
+                                    format(field.value, "PPP")
+                                  ) : (
+                                    <span>Pick a date</span>
+                                  )}
+                                  <Calendar className="ml-auto h-4 w-4 opacity-50" />
+                                </Button>
+                              </FormControl>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <CalendarComponent
+                                mode="single"
+                                selected={field.value}
+                                onSelect={field.onChange}
+                                disabled={(date) => date < new Date()}
+                                initialFocus
+                              />
+                            </PopoverContent>
+                          </Popover>
                           <FormMessage />
                         </FormItem>
                       )}
