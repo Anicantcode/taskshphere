@@ -36,59 +36,60 @@ const StudentProjects = () => {
       try {
         console.log('Fetching projects for group ID:', groupId);
         
-        // First try to fetch from Supabase
-        const { data: supabaseProjects, error } = await supabase
+        // First try to fetch directly via the projects table
+        const { data: projectsData, error: projectsError } = await supabase
           .from('projects')
-          .select(`
-            id,
-            title,
-            description,
-            teacher_id,
-            group_id,
-            created_at,
-            updated_at,
-            tasks(
-              id,
-              title,
-              description,
-              is_completed,
-              due_date
-            )
-          `)
+          .select('*')
           .eq('group_id', groupId);
 
-        console.log('Supabase response:', { supabaseProjects, error });
-
-        if (error) {
-          console.error('Error fetching projects:', error);
-          throw error;
+        if (projectsError) {
+          console.error('Error fetching projects:', projectsError);
+          throw projectsError;
         }
 
-        if (supabaseProjects && supabaseProjects.length > 0) {
-          console.log('Projects found in Supabase:', supabaseProjects);
+        if (projectsData && projectsData.length > 0) {
+          console.log('Projects found:', projectsData);
           
-          // Transform Supabase data to match our Project type
-          const formattedProjects: Project[] = supabaseProjects.map(proj => ({
-            id: proj.id,
-            title: proj.title,
-            description: proj.description || '',
-            teacherId: proj.teacher_id,
-            groupId: proj.group_id,
-            groupName: `Group ${proj.group_id}`,
-            createdAt: proj.created_at,
-            updatedAt: proj.updated_at,
-            tasks: proj.tasks?.map(task => ({
-              id: task.id,
-              projectId: proj.id,
-              title: task.title,
-              description: task.description || '',
-              isCompleted: task.is_completed,
-              dueDate: task.due_date,
-            })) || [],
-          }));
+          // Now fetch tasks for each project
+          const projectsWithTasks = await Promise.all(
+            projectsData.map(async (project) => {
+              const { data: tasksData, error: tasksError } = await supabase
+                .from('tasks')
+                .select('*')
+                .eq('project_id', project.id);
+                
+              if (tasksError) {
+                console.error(`Error fetching tasks for project ${project.id}:`, tasksError);
+                return {
+                  ...project,
+                  tasks: [],
+                  groupName: `Group ${project.group_id}`
+                };
+              }
+              
+              return {
+                id: project.id,
+                title: project.title,
+                description: project.description || '',
+                teacherId: project.teacher_id,
+                groupId: project.group_id,
+                groupName: `Group ${project.group_id}`,
+                createdAt: project.created_at,
+                updatedAt: project.updated_at,
+                tasks: tasksData?.map(task => ({
+                  id: task.id,
+                  projectId: project.id,
+                  title: task.title,
+                  description: task.description || '',
+                  isCompleted: task.is_completed,
+                  dueDate: task.due_date,
+                })) || [],
+              };
+            })
+          );
           
-          setProjects(formattedProjects);
-          console.log('Formatted projects:', formattedProjects);
+          setProjects(projectsWithTasks);
+          console.log('Formatted projects with tasks:', projectsWithTasks);
         } else {
           // Fallback to mock data if no Supabase projects
           console.log('No projects found in Supabase, using mock data');

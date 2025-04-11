@@ -7,6 +7,7 @@ import { Task } from '@/lib/types';
 import { Search, Filter, ArrowUpDown, ClipboardList } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { allProjects } from '@/lib/mockData';
+import { supabase } from '@/integrations/supabase/client';
 
 const StudentTasks = () => {
   const { user } = useAuth();
@@ -14,6 +15,7 @@ const StudentTasks = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
@@ -25,23 +27,109 @@ const StudentTasks = () => {
 
   // Get all tasks assigned to this student's group
   useEffect(() => {
-    // Filter projects for this group
-    const groupProjects = allProjects.filter(project => project.groupId === groupId);
-    
-    // Collect all tasks from these projects
-    const groupTasks: Task[] = [];
-    groupProjects.forEach(project => {
-      if (project.tasks) {
-        project.tasks.forEach(task => {
-          groupTasks.push({
-            ...task,
-            projectTitle: project.title // Add project title to task for display
+    const fetchTasks = async () => {
+      setIsLoading(true);
+      try {
+        // First try to fetch from Supabase
+        const { data: projectsData, error: projectsError } = await supabase
+          .from('projects')
+          .select('id, title')
+          .eq('group_id', groupId);
+
+        if (projectsError) {
+          console.error('Error fetching projects:', projectsError);
+          throw projectsError;
+        }
+
+        if (projectsData && projectsData.length > 0) {
+          // Get tasks for all projects
+          const allTasks: Task[] = [];
+          
+          for (const project of projectsData) {
+            const { data: tasksData, error: tasksError } = await supabase
+              .from('tasks')
+              .select('*')
+              .eq('project_id', project.id);
+              
+            if (tasksError) {
+              console.error(`Error fetching tasks for project ${project.id}:`, tasksError);
+              continue;
+            }
+            
+            if (tasksData && tasksData.length > 0) {
+              allTasks.push(...tasksData.map(task => ({
+                id: task.id,
+                projectId: project.id,
+                title: task.title,
+                description: task.description || '',
+                isCompleted: task.is_completed,
+                dueDate: task.due_date,
+                projectTitle: project.title
+              })));
+            }
+          }
+          
+          setTasks(allTasks);
+          console.log('Fetched tasks:', allTasks);
+        } else {
+          // Fallback to mock data
+          const groupProjects = allProjects.filter(project => project.groupId === groupId);
+          const groupTasks: Task[] = [];
+          groupProjects.forEach(project => {
+            if (project.tasks) {
+              project.tasks.forEach(task => {
+                groupTasks.push({
+                  ...task,
+                  projectTitle: project.title
+                });
+              });
+            }
           });
+          setTasks(groupTasks);
+        }
+      } catch (error) {
+        console.error('Failed to fetch tasks, using mock data:', error);
+        // Use mock data as fallback
+        const groupProjects = allProjects.filter(project => project.groupId === groupId);
+        const groupTasks: Task[] = [];
+        groupProjects.forEach(project => {
+          if (project.tasks) {
+            project.tasks.forEach(task => {
+              groupTasks.push({
+                ...task,
+                projectTitle: project.title
+              });
+            });
+          }
         });
+        setTasks(groupTasks);
+      } finally {
+        setIsLoading(false);
       }
-    });
+    };
     
-    setTasks(groupTasks);
+    fetchTasks();
+    
+    // Set up real-time subscription for new tasks
+    const channel = supabase
+      .channel('tasks-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'tasks'
+        },
+        () => {
+          // Refresh tasks when changes occur
+          fetchTasks();
+        }
+      )
+      .subscribe();
+      
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [groupId]);
 
   // Filter tasks based on search query
@@ -95,7 +183,11 @@ const StudentTasks = () => {
             </div>
             
             {/* Tasks List */}
-            {filteredTasks.length === 0 ? (
+            {isLoading ? (
+              <div className="flex justify-center py-12">
+                <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full"></div>
+              </div>
+            ) : filteredTasks.length === 0 ? (
               <div className="glass-card rounded-xl p-8 text-center">
                 <ClipboardList className="mx-auto h-12 w-12 text-muted-foreground/60" />
                 <h3 className="mt-4 text-xl font-semibold">No tasks found</h3>
