@@ -10,6 +10,7 @@ import { allProjects } from '@/lib/mockData';
 import AssignedProjectsModal from '@/components/dashboard/AssignedProjectsModal';
 import { useLocation } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 const StudentProjects = () => {
   const { user } = useAuth();
@@ -18,6 +19,7 @@ const StudentProjects = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [projects, setProjects] = useState<Project[]>([]);
   const [showModal, setShowModal] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
@@ -27,42 +29,115 @@ const StudentProjects = () => {
   const studentId = user?.id || '';
   const groupId = studentId.split('-')[1] || '';
 
-  // Filter projects based on the student's group ID
+  // Fetch projects from Supabase and also use mock data as fallback
   useEffect(() => {
-    // Filter all projects to only those assigned to this group
-    const groupProjects = allProjects.filter(project => project.groupId === groupId);
-    setProjects(groupProjects);
+    const fetchProjects = async () => {
+      setIsLoading(true);
+      try {
+        // First try to fetch from Supabase
+        const { data: supabaseProjects, error } = await supabase
+          .from('projects')
+          .select(`
+            id,
+            title,
+            description,
+            teacher_id,
+            group_id,
+            created_at,
+            updated_at,
+            tasks(
+              id,
+              title,
+              description,
+              is_completed,
+              due_date
+            )
+          `)
+          .eq('group_id', groupId);
+
+        if (error) {
+          console.error('Error fetching projects:', error);
+          throw error;
+        }
+
+        if (supabaseProjects && supabaseProjects.length > 0) {
+          // Transform Supabase data to match our Project type
+          const formattedProjects: Project[] = supabaseProjects.map(proj => ({
+            id: proj.id,
+            title: proj.title,
+            description: proj.description || '',
+            teacherId: proj.teacher_id,
+            groupId: proj.group_id,
+            createdAt: proj.created_at,
+            updatedAt: proj.updated_at,
+            tasks: proj.tasks?.map(task => ({
+              id: task.id,
+              projectId: proj.id,
+              title: task.title,
+              description: task.description || '',
+              isCompleted: task.is_completed,
+              dueDate: task.due_date,
+            })) || [],
+          }));
+          
+          setProjects(formattedProjects);
+        } else {
+          // Fallback to mock data if no Supabase projects
+          console.log('No projects found in Supabase, using mock data');
+          const groupProjects = allProjects.filter(project => project.groupId === groupId);
+          setProjects(groupProjects);
+        }
+      } catch (error) {
+        console.error('Failed to fetch projects, using mock data:', error);
+        // Fallback to mock data on error
+        const groupProjects = allProjects.filter(project => project.groupId === groupId);
+        setProjects(groupProjects);
+      } finally {
+        setIsLoading(false);
+      }
+    };
     
-    // Show notification if coming from login (check URL parameters or sessionStorage)
+    fetchProjects();
+    
+    // Also set up real-time subscription for new projects
+    const channel = supabase
+      .channel('table-db-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'projects',
+          filter: `group_id=eq.${groupId}`,
+        },
+        (payload) => {
+          console.log('New project received:', payload);
+          toast({
+            title: "New Project Assigned",
+            description: "Your group has been assigned a new project. Refreshing...",
+          });
+          // Refresh projects when a new one is assigned
+          fetchProjects();
+        }
+      )
+      .subscribe();
+      
+    // Check for notification flag
     const showNotification = sessionStorage.getItem('showProjectNotification');
-    if (showNotification === 'true' && groupProjects.length > 0) {
+    if (showNotification === 'true') {
       setShowModal(true);
       sessionStorage.removeItem('showProjectNotification');
       
-      // Also show a toast notification
       toast({
         title: "Projects Assigned",
-        description: `You have ${groupProjects.length} project(s) assigned to your group.`,
+        description: `Checking for projects assigned to your group.`,
       });
     }
-  }, [groupId]);
-
-  // Listen for new project assignments (simulated)
-  useEffect(() => {
-    // In a real application, this would be a websocket or polling
-    const checkForNewProjects = setInterval(() => {
-      const hasNewProject = localStorage.getItem('newProjectAssigned');
-      if (hasNewProject === 'true') {
-        toast({
-          title: "New Project Assigned",
-          description: "Your group has been assigned a new project. Refresh to see details.",
-        });
-        localStorage.removeItem('newProjectAssigned');
-      }
-    }, 5000);
     
-    return () => clearInterval(checkForNewProjects);
-  }, []);
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [groupId]);
 
   // Filter projects based on search query
   const filteredProjects = projects.filter(
@@ -115,7 +190,11 @@ const StudentProjects = () => {
             </div>
             
             {/* Projects Grid */}
-            {filteredProjects.length === 0 ? (
+            {isLoading ? (
+              <div className="flex justify-center py-12">
+                <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full"></div>
+              </div>
+            ) : filteredProjects.length === 0 ? (
               <div className="glass-card rounded-xl p-8 text-center">
                 <FolderKanban className="mx-auto h-12 w-12 text-muted-foreground/60" />
                 <h3 className="mt-4 text-xl font-semibold">No projects found</h3>

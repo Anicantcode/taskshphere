@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Navbar from '@/components/layout/Navbar';
 import Sidebar from '@/components/layout/Sidebar';
 import ProjectCard from '@/components/dashboard/ProjectCard';
@@ -7,8 +7,9 @@ import CreateProjectModal from '@/components/projects/CreateProjectModal';
 import { Project } from '@/lib/types';
 import { Plus, Search, Filter, ArrowUpDown, FolderKanban } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
-// Mock data
+// Mock data as fallback
 const mockProjects: Project[] = [
   {
     id: '1',
@@ -119,12 +120,120 @@ const mockProjects: Project[] = [
 const TeacherProjects = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [projects, setProjects] = useState<Project[]>(mockProjects);
+  const [projects, setProjects] = useState<Project[]>([]);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
   };
+
+  // Fetch projects from Supabase
+  useEffect(() => {
+    const fetchProjects = async () => {
+      setIsLoading(true);
+      try {
+        const { data: supabaseProjects, error } = await supabase
+          .from('projects')
+          .select(`
+            id,
+            title, 
+            description,
+            teacher_id,
+            group_id,
+            created_at,
+            updated_at,
+            tasks(
+              id,
+              title,
+              description,
+              is_completed,
+              due_date
+            )
+          `);
+
+        if (error) {
+          console.error('Error fetching projects:', error);
+          throw error;
+        }
+
+        if (supabaseProjects && supabaseProjects.length > 0) {
+          // Transform Supabase data to match our Project type
+          const formattedProjects: Project[] = await Promise.all(
+            supabaseProjects.map(async (proj) => {
+              // Get group name for display
+              let groupName = `Group ${proj.group_id}`;
+              try {
+                const { data: groupData } = await supabase
+                  .from('groups')
+                  .select('name')
+                  .eq('id', proj.group_id)
+                  .single();
+                
+                if (groupData) {
+                  groupName = groupData.name;
+                }
+              } catch (err) {
+                console.error('Error fetching group name:', err);
+              }
+
+              return {
+                id: proj.id,
+                title: proj.title,
+                description: proj.description || '',
+                teacherId: proj.teacher_id,
+                groupId: proj.group_id,
+                groupName: groupName,
+                createdAt: proj.created_at,
+                updatedAt: proj.updated_at,
+                tasks: proj.tasks?.map(task => ({
+                  id: task.id,
+                  projectId: proj.id,
+                  title: task.title,
+                  description: task.description || '',
+                  isCompleted: task.is_completed,
+                  dueDate: task.due_date,
+                })) || [],
+              };
+            })
+          );
+          
+          setProjects(formattedProjects);
+        } else {
+          // Fallback to mock data if no Supabase projects
+          console.log('No projects found in Supabase, using mock data');
+          setProjects(mockProjects);
+        }
+      } catch (error) {
+        console.error('Failed to fetch projects, using mock data:', error);
+        setProjects(mockProjects);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchProjects();
+    
+    // Set up real-time subscription for changes
+    const channel = supabase
+      .channel('table-db-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'projects',
+        },
+        () => {
+          fetchProjects();
+        }
+      )
+      .subscribe();
+    
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   // Filter projects based on search query
   const filteredProjects = projects.filter(
@@ -134,39 +243,102 @@ const TeacherProjects = () => {
       project.groupName?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // Handle project creation
-  const handleCreateProject = (projectData: any) => {
-    // Create a new project object
-    const newProject: Project = {
-      id: `project-${Date.now()}`,
-      title: projectData.title,
-      description: projectData.description,
-      teacherId: '1', // Assuming the current teacher's ID is 1
-      groupId: projectData.groupId,
-      groupName: `Group ${projectData.groupId}`, // Use the actual group name
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      tasks: projectData.tasks.map((task: any, index: number) => ({
-        id: `task-${Date.now()}-${index}`,
-        projectId: `project-${Date.now()}`,
-        title: task.title,
-        description: task.description,
-        dueDate: task.dueDate ? task.dueDate.toISOString() : undefined,
-        isCompleted: false,
-      })),
-    };
-
-    // Add the new project to the projects state
-    setProjects([newProject, ...projects]);
-    
-    // Close the modal
-    setIsCreateModalOpen(false);
-    
-    // Show success toast
-    toast({
-      title: 'Project Created',
-      description: `"${newProject.title}" has been assigned to ${newProject.groupName}.`,
-    });
+  // Handle project creation with Supabase integration
+  const handleCreateProject = async (projectData: any) => {
+    try {
+      // Insert project into Supabase
+      const { data: projectInsert, error: projectError } = await supabase
+        .from('projects')
+        .insert({
+          title: projectData.title,
+          description: projectData.description,
+          teacher_id: '1', // Assuming the current teacher's ID
+          group_id: projectData.groupId
+        })
+        .select()
+        .single();
+      
+      if (projectError) {
+        throw projectError;
+      }
+      
+      // Insert tasks for the project
+      if (projectInsert && projectData.tasks && projectData.tasks.length > 0) {
+        const tasksToInsert = projectData.tasks.map((task: any) => ({
+          project_id: projectInsert.id,
+          title: task.title,
+          description: task.description,
+          due_date: task.dueDate ? task.dueDate.toISOString() : null,
+          is_completed: false
+        }));
+        
+        const { error: tasksError } = await supabase
+          .from('tasks')
+          .insert(tasksToInsert);
+          
+        if (tasksError) {
+          console.error('Error inserting tasks:', tasksError);
+        }
+      }
+      
+      // Get group name for display
+      let groupName = `Group ${projectData.groupId}`;
+      try {
+        const { data: groupData } = await supabase
+          .from('groups')
+          .select('name')
+          .eq('id', projectData.groupId)
+          .single();
+        
+        if (groupData) {
+          groupName = groupData.name;
+        }
+      } catch (err) {
+        console.error('Error fetching group name:', err);
+      }
+      
+      // Add the new project to the local state
+      const newProject: Project = {
+        id: projectInsert.id,
+        title: projectData.title,
+        description: projectData.description,
+        teacherId: '1',
+        groupId: projectData.groupId,
+        groupName: groupName,
+        createdAt: projectInsert.created_at,
+        updatedAt: projectInsert.updated_at,
+        tasks: projectData.tasks.map((task: any, index: number) => ({
+          id: `temp-id-${index}`, // Temporary ID until we fetch from DB
+          projectId: projectInsert.id,
+          title: task.title,
+          description: task.description,
+          dueDate: task.dueDate ? task.dueDate.toISOString() : undefined,
+          isCompleted: false,
+        })),
+      };
+      
+      // Trigger notification for students
+      localStorage.setItem('newProjectAssigned', 'true');
+      
+      // Update the UI
+      setProjects([newProject, ...projects]);
+      
+      // Close the modal
+      setIsCreateModalOpen(false);
+      
+      // Show success toast
+      toast({
+        title: 'Project Created',
+        description: `"${newProject.title}" has been assigned to ${newProject.groupName}.`,
+      });
+    } catch (error) {
+      console.error('Error creating project:', error);
+      toast({
+        title: 'Error Creating Project',
+        description: 'There was an error creating your project. Please try again.',
+        variant: 'destructive',
+      });
+    }
   };
 
   return (
@@ -223,7 +395,11 @@ const TeacherProjects = () => {
             </div>
             
             {/* Projects Grid */}
-            {filteredProjects.length === 0 ? (
+            {isLoading ? (
+              <div className="flex justify-center py-12">
+                <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full"></div>
+              </div>
+            ) : filteredProjects.length === 0 ? (
               <div className="glass-card rounded-xl p-8 text-center">
                 <FolderKanban className="mx-auto h-12 w-12 text-muted-foreground/60" />
                 <h3 className="mt-4 text-xl font-semibold">No projects found</h3>
