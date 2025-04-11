@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import Navbar from '@/components/layout/Navbar';
 import Sidebar from '@/components/layout/Sidebar';
 import ProjectCard from '@/components/dashboard/ProjectCard';
-import { Project } from '@/lib/types';
+import { Project, Task } from '@/lib/types';
 import { Search, Filter, ArrowUpDown, FolderKanban } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { allProjects } from '@/lib/mockData';
@@ -61,10 +61,16 @@ const StudentProjects = () => {
               if (tasksError) {
                 console.error(`Error fetching tasks for project ${project.id}:`, tasksError);
                 return {
-                  ...project,
+                  id: project.id,
+                  title: project.title,
+                  description: project.description || '',
+                  teacherId: project.teacher_id,
+                  groupId: project.group_id,
+                  groupName: `Group ${project.group_id}`,
+                  createdAt: project.created_at,
+                  updatedAt: project.updated_at,
                   tasks: [],
-                  groupName: `Group ${project.group_id}`
-                };
+                } as Project;
               }
               
               return {
@@ -84,7 +90,7 @@ const StudentProjects = () => {
                   isCompleted: task.is_completed,
                   dueDate: task.due_date,
                 })) || [],
-              };
+              } as Project;
             })
           );
           
