@@ -44,39 +44,10 @@ const StudentProjects = () => {
       try {
         console.log('Fetching projects for group ID:', groupId);
         
-        // First check if the group exists, if not create it
-        const { data: groupExists, error: groupCheckError } = await supabase
-          .from('groups')
-          .select('id')
-          .eq('id', groupId)
-          .single();
-          
-        if (groupCheckError && groupCheckError.code === 'PGRST116') {
-          console.log('Group does not exist, creating it...');
-          
-          // Create the group
-          const { data: newGroup, error: createGroupError } = await supabase
-            .from('groups')
-            .insert({
-              id: groupId,
-              name: `Group ${groupId}`,
-              created_by: 'teacher-1' // Default teacher ID
-            })
-            .select()
-            .single();
-            
-          if (createGroupError) {
-            console.error('Failed to create group:', createGroupError);
-            // Continue anyway, group might exist but not visible due to RLS
-          } else {
-            console.log('Group created successfully:', newGroup);
-          }
-        }
-        
-        // Try to fetch projects for this group - using a more explicit select to avoid issues
+        // Simplified approach - directly fetch projects first
         const { data: projectsData, error: projectsError } = await supabase
           .from('projects')
-          .select('id, title, description, teacher_id, group_id, created_at, updated_at')
+          .select('*')
           .eq('group_id', groupId);
 
         if (projectsError) {
@@ -92,7 +63,7 @@ const StudentProjects = () => {
             projectsData.map(async (project) => {
               const { data: tasksData, error: tasksError } = await supabase
                 .from('tasks')
-                .select('id, title, description, is_completed, due_date')
+                .select('*')
                 .eq('project_id', project.id);
                 
               if (tasksError) {
@@ -139,6 +110,34 @@ const StudentProjects = () => {
           const groupProjects = allProjects.filter(project => project.groupId === groupId);
           setProjects(groupProjects);
           console.log('Using mock data:', groupProjects);
+          
+          // Optionally auto-create a test project if in development
+          if (import.meta.env.DEV) {
+            console.log('In development mode, creating test project');
+            try {
+              const { data: newProject, error: createError } = await supabase
+                .from('projects')
+                .insert({
+                  title: 'Test Project',
+                  description: 'This is a test project created automatically',
+                  teacher_id: 'teacher-1',
+                  group_id: groupId
+                })
+                .select();
+                
+              if (createError) {
+                console.error('Error creating test project:', createError);
+              } else {
+                console.log('Test project created successfully:', newProject);
+                toast({
+                  title: "Test Project Created",
+                  description: "A test project was created for your group."
+                });
+              }
+            } catch (e) {
+              console.error('Failed to create test project:', e);
+            }
+          }
         }
       } catch (error) {
         console.error('Failed to fetch projects, using mock data:', error);

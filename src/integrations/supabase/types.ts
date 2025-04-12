@@ -291,6 +291,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: boolean
       }
+      user_can_access_group: {
+        Args: { group_id_param: string }
+        Returns: boolean
+      }
     }
     Enums: {
       submission_status: "pending" | "approved" | "rejected"
