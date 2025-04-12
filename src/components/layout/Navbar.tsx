@@ -21,25 +21,25 @@ const Navbar: React.FC<NavbarProps> = ({ isSidebarOpen, toggleSidebar }) => {
 
   return (
     <header className="sticky top-0 z-30 w-full bg-background/80 backdrop-blur-md border-b border-border">
-      <div className="flex h-16 items-center justify-between px-6">
+      <div className="flex h-16 items-center px-6">
         <div className="flex items-center">
           <button
             onClick={toggleSidebar}
-            className="p-2 rounded-md hover:bg-accent transition-colors"
+            className="mr-4 p-2 rounded-md hover:bg-accent transition-colors"
             aria-label={isSidebarOpen ? "Close sidebar" : "Open sidebar"}
           >
             {isSidebarOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
           
-          <a href="/dashboard" className="flex items-center space-x-2 ml-2">
+          <a href="/dashboard" className="flex items-center space-x-2">
             <div className="w-8 h-8 bg-primary rounded-md flex items-center justify-center">
               <span className="text-primary-foreground font-bold">TM</span>
             </div>
-            <span className="font-semibold hidden md:inline-block">TaskMaster</span>
+            <span className="font-semibold hidden sm:inline-block">TaskMaster</span>
           </a>
         </div>
 
-        <div className="flex items-center space-x-4">
+        <div className="ml-auto flex items-center space-x-4">
           <button
             className="p-2 rounded-full hover:bg-accent transition-colors relative"
             aria-label="Notifications"
@@ -59,7 +59,7 @@ const Navbar: React.FC<NavbarProps> = ({ isSidebarOpen, toggleSidebar }) => {
               )}>
                 {user?.name ? user.name.charAt(0).toUpperCase() : <User size={16} />}
               </div>
-              <span className="text-sm font-medium hidden md:block">
+              <span className="text-sm font-medium hidden sm:block">
                 {user?.name || 'User'}
               </span>
             </button>

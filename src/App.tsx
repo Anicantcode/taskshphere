@@ -10,11 +10,7 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import TeacherProjects from "./pages/teacher/Projects";
-import TeacherSubmissions from "./pages/teacher/Submissions";
-import TeacherGroups from "./pages/teacher/Groups";
 import StudentProjects from "./pages/student/Projects";
-import StudentTasks from "./pages/student/Tasks";
-import ProjectDetails from "./pages/ProjectDetails";
 import Leaderboard from "./pages/student/Leaderboard";
 import NotFound from "./pages/NotFound";
 import { Suspense } from "react";
@@ -76,38 +72,12 @@ const App = () => (
                 }
               />
               
-              {/* Project details page - accessible to both roles */}
-              <Route
-                path="/projects/:id"
-                element={
-                  <ProtectedRoute>
-                    <ProjectDetails />
-                  </ProtectedRoute>
-                }
-              />
-              
               {/* Teacher-specific routes */}
               <Route
                 path="/teacher/projects"
                 element={
                   <ProtectedRoute requiredRole="teacher">
                     <TeacherProjects />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/teacher/submissions"
-                element={
-                  <ProtectedRoute requiredRole="teacher">
-                    <TeacherSubmissions />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/teacher/groups"
-                element={
-                  <ProtectedRoute requiredRole="teacher">
-                    <TeacherGroups />
                   </ProtectedRoute>
                 }
               />
@@ -118,14 +88,6 @@ const App = () => (
                 element={
                   <ProtectedRoute requiredRole="student">
                     <StudentProjects />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/student/tasks"
-                element={
-                  <ProtectedRoute requiredRole="student">
-                    <StudentTasks />
                   </ProtectedRoute>
                 }
               />

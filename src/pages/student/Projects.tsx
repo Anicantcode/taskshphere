@@ -1,204 +1,71 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Navbar from '@/components/layout/Navbar';
 import Sidebar from '@/components/layout/Sidebar';
 import ProjectCard from '@/components/dashboard/ProjectCard';
-import { Project, Task } from '@/lib/types';
+import { Project } from '@/lib/types';
 import { Search, Filter, ArrowUpDown, FolderKanban } from 'lucide-react';
-import { useAuth } from '@/context/AuthContext';
-import { allProjects } from '@/lib/mockData';
-import AssignedProjectsModal from '@/components/dashboard/AssignedProjectsModal';
-import { useLocation } from 'react-router-dom';
-import { toast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
+
+// Mock data
+const mockProjects: Project[] = [
+  {
+    id: '1',
+    title: 'Web Development Basics',
+    description: 'Learn the fundamentals of HTML, CSS, and JavaScript through hands-on projects.',
+    teacherId: '1',
+    groupId: '1',
+    groupName: 'Web Wizards',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    tasks: [
+      {
+        id: '1',
+        projectId: '1',
+        title: 'Create a personal portfolio',
+        description: 'Design and implement a personal portfolio website using HTML and CSS.',
+        isCompleted: true,
+      },
+      {
+        id: '2',
+        projectId: '1',
+        title: 'JavaScript Calculator',
+        description: 'Build a functional calculator with JavaScript.',
+        isCompleted: false,
+      },
+    ],
+  },
+  {
+    id: '2',
+    title: 'Mobile App Design',
+    description: 'Design and prototype a mobile application focusing on user experience and interface.',
+    teacherId: '1',
+    groupId: '1',
+    groupName: 'Web Wizards',
+    createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+    updatedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+    tasks: [
+      {
+        id: '4',
+        projectId: '2',
+        title: 'User Research',
+        description: 'Conduct user research to understand the target audience.',
+        isCompleted: true,
+      },
+      {
+        id: '5',
+        projectId: '2',
+        title: 'Wireframing',
+        description: 'Create wireframes for the mobile application.',
+        isCompleted: true,
+      },
+    ],
+  },
+];
 
 const StudentProjects = () => {
-  const { user } = useAuth();
-  const location = useLocation();
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [showModal, setShowModal] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [groupId, setGroupId] = useState<string | null>(null);
-
-  const toggleSidebar = () => {
-    setIsSidebarOpen(!isSidebarOpen);
-  };
-
-  // Determine group ID based on user info
-  useEffect(() => {
-    if (user) {
-      // Extract the group ID from the student ID (assuming format: "student-X")
-      const studentId = user.id || '';
-      let extractedGroupId = studentId.split('-')[1] || '';
-      
-      // If extractedGroupId is not numeric, set a default for testing
-      if (!extractedGroupId || !/^\d+$/.test(extractedGroupId)) {
-        console.warn('Could not extract valid group ID from student ID, using default "1"');
-        extractedGroupId = '1';
-      }
-      
-      setGroupId(extractedGroupId);
-      console.log('Student ID:', studentId, 'Group ID:', extractedGroupId);
-    }
-  }, [user]);
-
-  // Fetch projects from Supabase and also use mock data as fallback
-  useEffect(() => {
-    const fetchProjects = async () => {
-      if (!groupId) return; // Don't fetch if we don't have a groupId
-      
-      setIsLoading(true);
-      try {
-        console.log('Fetching projects for group ID:', groupId);
-        
-        // Try to fetch projects with UUID-based group IDs first
-        const { data: uuidGroups, error: uuidError } = await supabase
-          .from('groups')
-          .select('id, name')
-          .ilike('name', `%${groupId}%`);
-
-        if (uuidError) {
-          console.error('Error fetching UUID groups:', uuidError);
-        }
-
-        let targetGroupIds: string[] = [];
-        
-        if (uuidGroups && uuidGroups.length > 0) {
-          // If we found matching groups by name pattern, use their IDs
-          console.log('Found UUID groups by name pattern:', uuidGroups);
-          targetGroupIds = uuidGroups.map(g => g.id);
-        }
-        
-        // If we have target group IDs to search for
-        if (targetGroupIds.length > 0) {
-          const { data: projectsData, error: projectsError } = await supabase
-            .from('projects')
-            .select('*')
-            .in('group_id', targetGroupIds);
-
-          if (projectsError) {
-            console.error('Error fetching projects:', projectsError);
-            throw projectsError;
-          }
-
-          if (projectsData && projectsData.length > 0) {
-            console.log('Projects found:', projectsData);
-            
-            // Now fetch tasks for each project
-            const projectsWithTasks = await Promise.all(
-              projectsData.map(async (project) => {
-                const { data: tasksData, error: tasksError } = await supabase
-                  .from('tasks')
-                  .select('*')
-                  .eq('project_id', project.id);
-                  
-                if (tasksError) {
-                  console.error(`Error fetching tasks for project ${project.id}:`, tasksError);
-                  return {
-                    id: project.id,
-                    title: project.title,
-                    description: project.description || '',
-                    teacherId: project.teacher_id,
-                    groupId: project.group_id,
-                    groupName: `Group ${groupId}`,
-                    createdAt: project.created_at,
-                    updatedAt: project.updated_at,
-                    tasks: [],
-                  } as Project;
-                }
-                
-                return {
-                  id: project.id,
-                  title: project.title,
-                  description: project.description || '',
-                  teacherId: project.teacher_id,
-                  groupId: project.group_id,
-                  groupName: `Group ${groupId}`,
-                  createdAt: project.created_at,
-                  updatedAt: project.updated_at,
-                  tasks: tasksData?.map(task => ({
-                    id: task.id,
-                    projectId: project.id,
-                    title: task.title,
-                    description: task.description || '',
-                    isCompleted: task.is_completed,
-                    dueDate: task.due_date,
-                  })) || [],
-                } as Project;
-              })
-            );
-            
-            setProjects(projectsWithTasks);
-            console.log('Formatted projects with tasks:', projectsWithTasks);
-          } else {
-            // Fallback to mock data if no Supabase projects
-            console.log('No projects found in Supabase, using mock data');
-            const groupProjects = allProjects.filter(project => project.groupId === groupId);
-            setProjects(groupProjects);
-          }
-        } else {
-          // Fallback to mock data if we didn't find UUID groups
-          console.log('No UUID groups found, using mock data with groupId:', groupId);
-          const groupProjects = allProjects.filter(project => project.groupId === groupId);
-          setProjects(groupProjects);
-        }
-      } catch (error) {
-        console.error('Failed to fetch projects, using mock data:', error);
-        // Fallback to mock data on error
-        const groupProjects = allProjects.filter(project => project.groupId === groupId);
-        setProjects(groupProjects);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
-    if (groupId) {
-      fetchProjects();
-      
-      // Also set up real-time subscription for new projects
-      const channel = supabase
-        .channel('table-db-changes')
-        .on(
-          'postgres_changes',
-          {
-            event: 'INSERT',
-            schema: 'public',
-            table: 'projects',
-          },
-          (payload) => {
-            console.log('New project received:', payload);
-            // Check if this project is for our group
-            // We'd need to check the group_id field in the payload
-            // Since we can't directly match string IDs with UUIDs, we'll refresh all projects
-            fetchProjects();
-            
-            toast({
-              title: "New Project Assigned",
-              description: "Your group has been assigned a new project. Refreshing data...",
-            });
-          }
-        )
-        .subscribe();
-        
-      // Check for notification flag
-      const showNotification = sessionStorage.getItem('showProjectNotification');
-      if (showNotification === 'true') {
-        setShowModal(true);
-        sessionStorage.removeItem('showProjectNotification');
-        
-        toast({
-          title: "Projects Assigned",
-          description: `Checking for projects assigned to your group.`,
-        });
-      }
-      
-      return () => {
-        supabase.removeChannel(channel);
-      };
-    }
-  }, [groupId]);
+  const [projects, setProjects] = useState<Project[]>(mockProjects);
 
   // Filter projects based on search query
   const filteredProjects = projects.filter(
@@ -209,10 +76,10 @@ const StudentProjects = () => {
 
   return (
     <div className="min-h-screen bg-background flex">
-      <Sidebar isOpen={isSidebarOpen} toggleSidebar={toggleSidebar} />
+      <Sidebar isOpen={isSidebarOpen} />
       
       <div className="flex-1 flex flex-col ml-0 sm:ml-16 transition-all duration-300 ease-in-out">
-        <Navbar isSidebarOpen={isSidebarOpen} toggleSidebar={toggleSidebar} />
+        <Navbar isSidebarOpen={isSidebarOpen} toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} />
         
         <main className="flex-1 py-8 px-6 animate-fadeIn">
           <div className="max-w-7xl mx-auto">
@@ -221,11 +88,6 @@ const StudentProjects = () => {
               <p className="text-muted-foreground">
                 View and track your assigned projects
               </p>
-              {groupId && (
-                <div className="mt-2 inline-flex items-center px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium">
-                  Group {groupId}
-                </div>
-              )}
             </div>
             
             {/* Search and Filter */}
@@ -256,11 +118,7 @@ const StudentProjects = () => {
             </div>
             
             {/* Projects Grid */}
-            {isLoading ? (
-              <div className="flex justify-center py-12">
-                <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full"></div>
-              </div>
-            ) : filteredProjects.length === 0 ? (
+            {filteredProjects.length === 0 ? (
               <div className="glass-card rounded-xl p-8 text-center">
                 <FolderKanban className="mx-auto h-12 w-12 text-muted-foreground/60" />
                 <h3 className="mt-4 text-xl font-semibold">No projects found</h3>
@@ -280,13 +138,6 @@ const StudentProjects = () => {
           </div>
         </main>
       </div>
-      
-      {/* Assigned Projects Modal */}
-      <AssignedProjectsModal 
-        isOpen={showModal}
-        onClose={() => setShowModal(false)}
-        projects={projects}
-      />
     </div>
   );
 };

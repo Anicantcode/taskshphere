@@ -36,7 +36,6 @@ export interface Task {
   isCompleted: boolean;
   dueDate?: string;
   submissions?: Submission[];
-  projectTitle?: string; // Added this property
 }
 
 export type SubmissionStatus = 'pending' | 'approved' | 'rejected';
