@@ -73,10 +73,10 @@ const StudentProjects = () => {
           }
         }
         
-        // Try to fetch projects for this group
+        // Try to fetch projects for this group - using a more explicit select to avoid issues
         const { data: projectsData, error: projectsError } = await supabase
           .from('projects')
-          .select('*')
+          .select('id, title, description, teacher_id, group_id, created_at, updated_at')
           .eq('group_id', groupId);
 
         if (projectsError) {
@@ -92,7 +92,7 @@ const StudentProjects = () => {
             projectsData.map(async (project) => {
               const { data: tasksData, error: tasksError } = await supabase
                 .from('tasks')
-                .select('*')
+                .select('id, title, description, is_completed, due_date')
                 .eq('project_id', project.id);
                 
               if (tasksError) {

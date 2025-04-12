@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import Navbar from '@/components/layout/Navbar';
 import Sidebar from '@/components/layout/Sidebar';
@@ -133,6 +134,7 @@ const TeacherProjects = () => {
     const fetchProjects = async () => {
       setIsLoading(true);
       try {
+        // Use explicit column selection to ensure we get what we need
         const { data: supabaseProjects, error } = await supabase
           .from('projects')
           .select(`
@@ -142,14 +144,7 @@ const TeacherProjects = () => {
             teacher_id,
             group_id,
             created_at,
-            updated_at,
-            tasks(
-              id,
-              title,
-              description,
-              is_completed,
-              due_date
-            )
+            updated_at
           `);
 
         if (error) {
@@ -161,6 +156,22 @@ const TeacherProjects = () => {
           // Transform Supabase data to match our Project type
           const formattedProjects: Project[] = await Promise.all(
             supabaseProjects.map(async (proj) => {
+              // Get tasks for this project
+              const { data: tasksData, error: tasksError } = await supabase
+                .from('tasks')
+                .select(`
+                  id,
+                  title,
+                  description,
+                  is_completed,
+                  due_date
+                `)
+                .eq('project_id', proj.id);
+                
+              if (tasksError) {
+                console.error(`Error fetching tasks for project ${proj.id}:`, tasksError);
+              }
+              
               // Get group name for display
               let groupName = `Group ${proj.group_id}`;
               try {
@@ -186,7 +197,7 @@ const TeacherProjects = () => {
                 groupName: groupName,
                 createdAt: proj.created_at,
                 updatedAt: proj.updated_at,
-                tasks: proj.tasks?.map(task => ({
+                tasks: tasksData?.map(task => ({
                   id: task.id,
                   projectId: proj.id,
                   title: task.title,

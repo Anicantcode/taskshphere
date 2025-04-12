@@ -1,13 +1,16 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import Navbar from '@/components/layout/Navbar';
 import Sidebar from '@/components/layout/Sidebar';
 import { Project, Task } from '@/lib/types';
-import { ArrowLeft, Calendar, Users, CheckCircle, XCircle, Clock, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Calendar, Users, CheckCircle, Clock, AlertTriangle } from 'lucide-react';
 import { format, isAfter, parseISO, formatDistance } from 'date-fns';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/hooks/use-toast';
 
-// Import the mock projects data
+// Import the mock projects data as fallback
 import { allProjects } from '@/lib/mockData';
 
 const TaskItem = ({ task }: { task: Task }) => {
@@ -79,14 +82,131 @@ const ProjectDetails = () => {
   };
 
   useEffect(() => {
-    // Find the project in our mock data
-    const foundProject = allProjects.find(p => p.id === id);
+    const fetchProjectDetails = async () => {
+      setLoading(true);
+      
+      try {
+        if (!id) return;
+        
+        // Try to fetch the project from Supabase
+        const { data: projectData, error: projectError } = await supabase
+          .from('projects')
+          .select(`
+            id, 
+            title, 
+            description, 
+            teacher_id,
+            group_id, 
+            created_at,
+            updated_at
+          `)
+          .eq('id', id)
+          .single();
+        
+        if (projectError) {
+          console.error('Error fetching project:', projectError);
+          // Try to find the project in mock data as fallback
+          const mockProject = allProjects.find(p => p.id === id);
+          if (mockProject) {
+            setProject(mockProject);
+          }
+          setLoading(false);
+          return;
+        }
+        
+        if (!projectData) {
+          setLoading(false);
+          return;
+        }
+        
+        // Fetch tasks for this project
+        const { data: tasksData, error: tasksError } = await supabase
+          .from('tasks')
+          .select('*')
+          .eq('project_id', id);
+          
+        if (tasksError) {
+          console.error('Error fetching tasks:', tasksError);
+          toast({
+            title: 'Error',
+            description: 'Could not load tasks for this project.',
+            variant: 'destructive',
+          });
+        }
+        
+        // Get group name
+        let groupName = `Group ${projectData.group_id}`;
+        try {
+          const { data: groupData } = await supabase
+            .from('groups')
+            .select('name')
+            .eq('id', projectData.group_id)
+            .single();
+            
+          if (groupData) {
+            groupName = groupData.name;
+          }
+        } catch (error) {
+          console.error('Error fetching group name:', error);
+        }
+        
+        // Create the full project object
+        const fullProject: Project = {
+          id: projectData.id,
+          title: projectData.title,
+          description: projectData.description || '',
+          teacherId: projectData.teacher_id,
+          groupId: projectData.group_id,
+          groupName: groupName,
+          createdAt: projectData.created_at,
+          updatedAt: projectData.updated_at,
+          tasks: tasksData?.map(task => ({
+            id: task.id,
+            projectId: task.project_id,
+            title: task.title,
+            description: task.description || '',
+            isCompleted: task.is_completed,
+            dueDate: task.due_date,
+          })) || [],
+        };
+        
+        setProject(fullProject);
+      } catch (error) {
+        console.error('Error in fetchProjectDetails:', error);
+        // Try to find the project in mock data as fallback
+        if (id) {
+          const mockProject = allProjects.find(p => p.id === id);
+          if (mockProject) {
+            setProject(mockProject);
+          }
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
     
-    if (foundProject) {
-      setProject(foundProject);
-    }
+    fetchProjectDetails();
     
-    setLoading(false);
+    // Setup real-time task updates
+    const channel = supabase
+      .channel('project-tasks-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'tasks',
+          filter: id ? `project_id=eq.${id}` : undefined,
+        },
+        () => {
+          fetchProjectDetails();
+        }
+      )
+      .subscribe();
+      
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [id]);
 
   if (loading) {
