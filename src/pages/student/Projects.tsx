@@ -37,27 +37,113 @@ const StudentProjects = () => {
   
   console.log('Student ID:', studentId, 'Group ID:', groupId);
 
-  // Fetch projects - bypassing RLS by using mock data
+  // Fetch projects from Supabase and also use mock data as fallback
   useEffect(() => {
     const fetchProjects = async () => {
       setIsLoading(true);
       try {
-        console.log('Using mock data for group ID:', groupId);
+        console.log('Fetching projects for group ID:', groupId);
         
-        // Simply filter the mock data based on group ID
+        // Simplified approach - directly fetch projects first
+        const { data: projectsData, error: projectsError } = await supabase
+          .from('projects')
+          .select('*')
+          .eq('group_id', groupId);
+
+        if (projectsError) {
+          console.error('Error fetching projects:', projectsError);
+          throw projectsError;
+        }
+
+        if (projectsData && projectsData.length > 0) {
+          console.log('Projects found:', projectsData);
+          
+          // Now fetch tasks for each project
+          const projectsWithTasks = await Promise.all(
+            projectsData.map(async (project) => {
+              const { data: tasksData, error: tasksError } = await supabase
+                .from('tasks')
+                .select('*')
+                .eq('project_id', project.id);
+                
+              if (tasksError) {
+                console.error(`Error fetching tasks for project ${project.id}:`, tasksError);
+                return {
+                  id: project.id,
+                  title: project.title,
+                  description: project.description || '',
+                  teacherId: project.teacher_id,
+                  groupId: project.group_id,
+                  groupName: `Group ${project.group_id}`,
+                  createdAt: project.created_at,
+                  updatedAt: project.updated_at,
+                  tasks: [],
+                } as Project;
+              }
+              
+              return {
+                id: project.id,
+                title: project.title,
+                description: project.description || '',
+                teacherId: project.teacher_id,
+                groupId: project.group_id,
+                groupName: `Group ${project.group_id}`,
+                createdAt: project.created_at,
+                updatedAt: project.updated_at,
+                tasks: tasksData?.map(task => ({
+                  id: task.id,
+                  projectId: project.id,
+                  title: task.title,
+                  description: task.description || '',
+                  isCompleted: task.is_completed,
+                  dueDate: task.due_date,
+                })) || [],
+              } as Project;
+            })
+          );
+          
+          setProjects(projectsWithTasks);
+          console.log('Formatted projects with tasks:', projectsWithTasks);
+        } else {
+          // Fallback to mock data if no Supabase projects
+          console.log('No projects found in Supabase, using mock data');
+          const groupProjects = allProjects.filter(project => project.groupId === groupId);
+          setProjects(groupProjects);
+          console.log('Using mock data:', groupProjects);
+          
+          // Optionally auto-create a test project if in development
+          if (import.meta.env.DEV) {
+            console.log('In development mode, creating test project');
+            try {
+              const { data: newProject, error: createError } = await supabase
+                .from('projects')
+                .insert({
+                  title: 'Test Project',
+                  description: 'This is a test project created automatically',
+                  teacher_id: 'teacher-1',
+                  group_id: groupId
+                })
+                .select();
+                
+              if (createError) {
+                console.error('Error creating test project:', createError);
+              } else {
+                console.log('Test project created successfully:', newProject);
+                toast({
+                  title: "Test Project Created",
+                  description: "A test project was created for your group."
+                });
+              }
+            } catch (e) {
+              console.error('Failed to create test project:', e);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch projects, using mock data:', error);
+        // Fallback to mock data on error
         const groupProjects = allProjects.filter(project => project.groupId === groupId);
         setProjects(groupProjects);
-        console.log('Projects found in mock data:', groupProjects);
-        
-        // Future enhancement: Try accessing Supabase once we set up the tables
-        // properly, for now we'll use mock data only
-      } catch (error) {
-        console.error('Error in projects handler:', error);
-        toast({
-          title: "Error Loading Projects",
-          description: "There was a problem loading your projects. Using mock data instead.",
-          variant: "destructive",
-        });
       } finally {
         setIsLoading(false);
       }
@@ -66,6 +152,29 @@ const StudentProjects = () => {
     if (user) {
       fetchProjects();
       
+      // Also set up real-time subscription for new projects
+      const channel = supabase
+        .channel('table-db-changes')
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'projects',
+            filter: `group_id=eq.${groupId}`,
+          },
+          (payload) => {
+            console.log('New project received:', payload);
+            toast({
+              title: "New Project Assigned",
+              description: "Your group has been assigned a new project. Refreshing...",
+            });
+            // Refresh projects when a new one is assigned
+            fetchProjects();
+          }
+        )
+        .subscribe();
+        
       // Check for notification flag
       const showNotification = sessionStorage.getItem('showProjectNotification');
       if (showNotification === 'true') {
@@ -77,6 +186,10 @@ const StudentProjects = () => {
           description: `Checking for projects assigned to your group.`,
         });
       }
+      
+      return () => {
+        supabase.removeChannel(channel);
+      };
     }
   }, [groupId, user]);
 
