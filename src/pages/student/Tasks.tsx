@@ -26,7 +26,15 @@ const StudentTasks = () => {
   
   // Extract the group ID from the student ID (assuming format: "student-X")
   const studentId = user?.id || '';
-  const groupId = studentId.split('-')[1] || '';
+  let groupId = studentId.split('-')[1] || '';
+  
+  // If groupId is not numeric, set a default for testing
+  if (!groupId || !/^\d+$/.test(groupId)) {
+    console.warn('Could not extract valid group ID from student ID, using default "1"');
+    groupId = '1';
+  }
+  
+  console.log('Student ID:', studentId, 'Group ID:', groupId);
 
   // Get all tasks assigned to this student's group
   useEffect(() => {
@@ -34,6 +42,35 @@ const StudentTasks = () => {
       setIsLoading(true);
       try {
         console.log('Fetching tasks for group ID:', groupId);
+        
+        // Check if the group exists, if not create it
+        const { data: groupExists, error: groupCheckError } = await supabase
+          .from('groups')
+          .select('id')
+          .eq('id', groupId)
+          .single();
+          
+        if (groupCheckError && groupCheckError.code === 'PGRST116') {
+          console.log('Group does not exist, creating it...');
+          
+          // Create the group
+          const { data: newGroup, error: createGroupError } = await supabase
+            .from('groups')
+            .insert({
+              id: groupId,
+              name: `Group ${groupId}`,
+              created_by: 'teacher-1' // Default teacher ID
+            })
+            .select()
+            .single();
+            
+          if (createGroupError) {
+            console.error('Failed to create group:', createGroupError);
+            // Continue anyway, group might exist but not visible due to RLS
+          } else {
+            console.log('Group created successfully:', newGroup);
+          }
+        }
         
         // First try to fetch from Supabase
         const { data: projectsData, error: projectsError } = await supabase
@@ -118,34 +155,36 @@ const StudentTasks = () => {
       }
     };
     
-    fetchTasks();
-    
-    // Set up real-time subscription for new tasks
-    const channel = supabase
-      .channel('tasks-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'tasks'
-        },
-        (payload) => {
-          console.log('Task change detected:', payload);
-          toast({
-            title: "Task Updated",
-            description: "A task has been updated. Refreshing your task list.",
-          });
-          // Refresh tasks when changes occur
-          fetchTasks();
-        }
-      )
-      .subscribe();
+    if (user) {
+      fetchTasks();
       
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [groupId]);
+      // Set up real-time subscription for new tasks
+      const channel = supabase
+        .channel('tasks-changes')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'tasks'
+          },
+          (payload) => {
+            console.log('Task change detected:', payload);
+            toast({
+              title: "Task Updated",
+              description: "A task has been updated. Refreshing your task list.",
+            });
+            // Refresh tasks when changes occur
+            fetchTasks();
+          }
+        )
+        .subscribe();
+        
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
+  }, [groupId, user]);
 
   // Filter tasks based on search query
   const filteredTasks = tasks.filter(

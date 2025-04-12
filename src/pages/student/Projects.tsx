@@ -27,7 +27,15 @@ const StudentProjects = () => {
 
   // Extract the group ID from the student ID (assuming format: "student-X")
   const studentId = user?.id || '';
-  const groupId = studentId.split('-')[1] || '';
+  let groupId = studentId.split('-')[1] || '';
+  
+  // If groupId is not numeric, set a default for testing
+  if (!groupId || !/^\d+$/.test(groupId)) {
+    console.warn('Could not extract valid group ID from student ID, using default "1"');
+    groupId = '1';
+  }
+  
+  console.log('Student ID:', studentId, 'Group ID:', groupId);
 
   // Fetch projects from Supabase and also use mock data as fallback
   useEffect(() => {
@@ -36,7 +44,36 @@ const StudentProjects = () => {
       try {
         console.log('Fetching projects for group ID:', groupId);
         
-        // First try to fetch directly via the projects table
+        // First check if the group exists, if not create it
+        const { data: groupExists, error: groupCheckError } = await supabase
+          .from('groups')
+          .select('id')
+          .eq('id', groupId)
+          .single();
+          
+        if (groupCheckError && groupCheckError.code === 'PGRST116') {
+          console.log('Group does not exist, creating it...');
+          
+          // Create the group
+          const { data: newGroup, error: createGroupError } = await supabase
+            .from('groups')
+            .insert({
+              id: groupId,
+              name: `Group ${groupId}`,
+              created_by: 'teacher-1' // Default teacher ID
+            })
+            .select()
+            .single();
+            
+          if (createGroupError) {
+            console.error('Failed to create group:', createGroupError);
+            // Continue anyway, group might exist but not visible due to RLS
+          } else {
+            console.log('Group created successfully:', newGroup);
+          }
+        }
+        
+        // Try to fetch projects for this group
         const { data: projectsData, error: projectsError } = await supabase
           .from('projects')
           .select('*')
@@ -113,47 +150,49 @@ const StudentProjects = () => {
       }
     };
     
-    fetchProjects();
-    
-    // Also set up real-time subscription for new projects
-    const channel = supabase
-      .channel('table-db-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'projects',
-          filter: `group_id=eq.${groupId}`,
-        },
-        (payload) => {
-          console.log('New project received:', payload);
-          toast({
-            title: "New Project Assigned",
-            description: "Your group has been assigned a new project. Refreshing...",
-          });
-          // Refresh projects when a new one is assigned
-          fetchProjects();
-        }
-      )
-      .subscribe();
+    if (user) {
+      fetchProjects();
       
-    // Check for notification flag
-    const showNotification = sessionStorage.getItem('showProjectNotification');
-    if (showNotification === 'true') {
-      setShowModal(true);
-      sessionStorage.removeItem('showProjectNotification');
+      // Also set up real-time subscription for new projects
+      const channel = supabase
+        .channel('table-db-changes')
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'projects',
+            filter: `group_id=eq.${groupId}`,
+          },
+          (payload) => {
+            console.log('New project received:', payload);
+            toast({
+              title: "New Project Assigned",
+              description: "Your group has been assigned a new project. Refreshing...",
+            });
+            // Refresh projects when a new one is assigned
+            fetchProjects();
+          }
+        )
+        .subscribe();
+        
+      // Check for notification flag
+      const showNotification = sessionStorage.getItem('showProjectNotification');
+      if (showNotification === 'true') {
+        setShowModal(true);
+        sessionStorage.removeItem('showProjectNotification');
+        
+        toast({
+          title: "Projects Assigned",
+          description: `Checking for projects assigned to your group.`,
+        });
+      }
       
-      toast({
-        title: "Projects Assigned",
-        description: `Checking for projects assigned to your group.`,
-      });
+      return () => {
+        supabase.removeChannel(channel);
+      };
     }
-    
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [groupId]);
+  }, [groupId, user]);
 
   // Filter projects based on search query
   const filteredProjects = projects.filter(
