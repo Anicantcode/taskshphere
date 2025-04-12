@@ -20,124 +20,129 @@ const StudentProjects = () => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [groupId, setGroupId] = useState<string | null>(null);
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
   };
 
-  // Extract the group ID from the student ID (assuming format: "student-X")
-  const studentId = user?.id || '';
-  let groupId = studentId.split('-')[1] || '';
-  
-  // If groupId is not numeric, set a default for testing
-  if (!groupId || !/^\d+$/.test(groupId)) {
-    console.warn('Could not extract valid group ID from student ID, using default "1"');
-    groupId = '1';
-  }
-  
-  console.log('Student ID:', studentId, 'Group ID:', groupId);
+  // Determine group ID based on user info
+  useEffect(() => {
+    if (user) {
+      // Extract the group ID from the student ID (assuming format: "student-X")
+      const studentId = user.id || '';
+      let extractedGroupId = studentId.split('-')[1] || '';
+      
+      // If extractedGroupId is not numeric, set a default for testing
+      if (!extractedGroupId || !/^\d+$/.test(extractedGroupId)) {
+        console.warn('Could not extract valid group ID from student ID, using default "1"');
+        extractedGroupId = '1';
+      }
+      
+      setGroupId(extractedGroupId);
+      console.log('Student ID:', studentId, 'Group ID:', extractedGroupId);
+    }
+  }, [user]);
 
   // Fetch projects from Supabase and also use mock data as fallback
   useEffect(() => {
     const fetchProjects = async () => {
+      if (!groupId) return; // Don't fetch if we don't have a groupId
+      
       setIsLoading(true);
       try {
         console.log('Fetching projects for group ID:', groupId);
         
-        // Simplified approach - directly fetch projects first
-        const { data: projectsData, error: projectsError } = await supabase
-          .from('projects')
-          .select('*')
-          .eq('group_id', groupId);
+        // Try to fetch projects with UUID-based group IDs first
+        const { data: uuidGroups, error: uuidError } = await supabase
+          .from('groups')
+          .select('id, name')
+          .ilike('name', `%${groupId}%`);
 
-        if (projectsError) {
-          console.error('Error fetching projects:', projectsError);
-          throw projectsError;
+        if (uuidError) {
+          console.error('Error fetching UUID groups:', uuidError);
         }
 
-        if (projectsData && projectsData.length > 0) {
-          console.log('Projects found:', projectsData);
-          
-          // Now fetch tasks for each project
-          const projectsWithTasks = await Promise.all(
-            projectsData.map(async (project) => {
-              const { data: tasksData, error: tasksError } = await supabase
-                .from('tasks')
-                .select('*')
-                .eq('project_id', project.id);
+        let targetGroupIds: string[] = [];
+        
+        if (uuidGroups && uuidGroups.length > 0) {
+          // If we found matching groups by name pattern, use their IDs
+          console.log('Found UUID groups by name pattern:', uuidGroups);
+          targetGroupIds = uuidGroups.map(g => g.id);
+        }
+        
+        // If we have target group IDs to search for
+        if (targetGroupIds.length > 0) {
+          const { data: projectsData, error: projectsError } = await supabase
+            .from('projects')
+            .select('*')
+            .in('group_id', targetGroupIds);
+
+          if (projectsError) {
+            console.error('Error fetching projects:', projectsError);
+            throw projectsError;
+          }
+
+          if (projectsData && projectsData.length > 0) {
+            console.log('Projects found:', projectsData);
+            
+            // Now fetch tasks for each project
+            const projectsWithTasks = await Promise.all(
+              projectsData.map(async (project) => {
+                const { data: tasksData, error: tasksError } = await supabase
+                  .from('tasks')
+                  .select('*')
+                  .eq('project_id', project.id);
+                  
+                if (tasksError) {
+                  console.error(`Error fetching tasks for project ${project.id}:`, tasksError);
+                  return {
+                    id: project.id,
+                    title: project.title,
+                    description: project.description || '',
+                    teacherId: project.teacher_id,
+                    groupId: project.group_id,
+                    groupName: `Group ${groupId}`,
+                    createdAt: project.created_at,
+                    updatedAt: project.updated_at,
+                    tasks: [],
+                  } as Project;
+                }
                 
-              if (tasksError) {
-                console.error(`Error fetching tasks for project ${project.id}:`, tasksError);
                 return {
                   id: project.id,
                   title: project.title,
                   description: project.description || '',
                   teacherId: project.teacher_id,
                   groupId: project.group_id,
-                  groupName: `Group ${project.group_id}`,
+                  groupName: `Group ${groupId}`,
                   createdAt: project.created_at,
                   updatedAt: project.updated_at,
-                  tasks: [],
+                  tasks: tasksData?.map(task => ({
+                    id: task.id,
+                    projectId: project.id,
+                    title: task.title,
+                    description: task.description || '',
+                    isCompleted: task.is_completed,
+                    dueDate: task.due_date,
+                  })) || [],
                 } as Project;
-              }
-              
-              return {
-                id: project.id,
-                title: project.title,
-                description: project.description || '',
-                teacherId: project.teacher_id,
-                groupId: project.group_id,
-                groupName: `Group ${project.group_id}`,
-                createdAt: project.created_at,
-                updatedAt: project.updated_at,
-                tasks: tasksData?.map(task => ({
-                  id: task.id,
-                  projectId: project.id,
-                  title: task.title,
-                  description: task.description || '',
-                  isCompleted: task.is_completed,
-                  dueDate: task.due_date,
-                })) || [],
-              } as Project;
-            })
-          );
-          
-          setProjects(projectsWithTasks);
-          console.log('Formatted projects with tasks:', projectsWithTasks);
+              })
+            );
+            
+            setProjects(projectsWithTasks);
+            console.log('Formatted projects with tasks:', projectsWithTasks);
+          } else {
+            // Fallback to mock data if no Supabase projects
+            console.log('No projects found in Supabase, using mock data');
+            const groupProjects = allProjects.filter(project => project.groupId === groupId);
+            setProjects(groupProjects);
+          }
         } else {
-          // Fallback to mock data if no Supabase projects
-          console.log('No projects found in Supabase, using mock data');
+          // Fallback to mock data if we didn't find UUID groups
+          console.log('No UUID groups found, using mock data with groupId:', groupId);
           const groupProjects = allProjects.filter(project => project.groupId === groupId);
           setProjects(groupProjects);
-          console.log('Using mock data:', groupProjects);
-          
-          // Optionally auto-create a test project if in development
-          if (import.meta.env.DEV) {
-            console.log('In development mode, creating test project');
-            try {
-              const { data: newProject, error: createError } = await supabase
-                .from('projects')
-                .insert({
-                  title: 'Test Project',
-                  description: 'This is a test project created automatically',
-                  teacher_id: 'teacher-1',
-                  group_id: groupId
-                })
-                .select();
-                
-              if (createError) {
-                console.error('Error creating test project:', createError);
-              } else {
-                console.log('Test project created successfully:', newProject);
-                toast({
-                  title: "Test Project Created",
-                  description: "A test project was created for your group."
-                });
-              }
-            } catch (e) {
-              console.error('Failed to create test project:', e);
-            }
-          }
         }
       } catch (error) {
         console.error('Failed to fetch projects, using mock data:', error);
@@ -149,7 +154,7 @@ const StudentProjects = () => {
       }
     };
     
-    if (user) {
+    if (groupId) {
       fetchProjects();
       
       // Also set up real-time subscription for new projects
@@ -161,16 +166,18 @@ const StudentProjects = () => {
             event: 'INSERT',
             schema: 'public',
             table: 'projects',
-            filter: `group_id=eq.${groupId}`,
           },
           (payload) => {
             console.log('New project received:', payload);
+            // Check if this project is for our group
+            // We'd need to check the group_id field in the payload
+            // Since we can't directly match string IDs with UUIDs, we'll refresh all projects
+            fetchProjects();
+            
             toast({
               title: "New Project Assigned",
-              description: "Your group has been assigned a new project. Refreshing...",
+              description: "Your group has been assigned a new project. Refreshing data...",
             });
-            // Refresh projects when a new one is assigned
-            fetchProjects();
           }
         )
         .subscribe();
@@ -191,7 +198,7 @@ const StudentProjects = () => {
         supabase.removeChannel(channel);
       };
     }
-  }, [groupId, user]);
+  }, [groupId]);
 
   // Filter projects based on search query
   const filteredProjects = projects.filter(
@@ -214,6 +221,11 @@ const StudentProjects = () => {
               <p className="text-muted-foreground">
                 View and track your assigned projects
               </p>
+              {groupId && (
+                <div className="mt-2 inline-flex items-center px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium">
+                  Group {groupId}
+                </div>
+              )}
             </div>
             
             {/* Search and Filter */}
