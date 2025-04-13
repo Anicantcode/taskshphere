@@ -1,213 +1,156 @@
 
-import React, { useState, useEffect } from 'react';
-import Navbar from '@/components/layout/Navbar';
-import Sidebar from '@/components/layout/Sidebar';
+import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/context/AuthContext';
+import DashboardLayout from '@/components/layout/DashboardLayout';
 import ProjectCard from '@/components/dashboard/ProjectCard';
 import { Project } from '@/lib/types';
-import { Search, Filter, ArrowUpDown, FolderKanban } from 'lucide-react';
-import { useAuth } from '@/context/AuthContext';
-import { allProjects } from '@/lib/mockData';
-import AssignedProjectsModal from '@/components/dashboard/AssignedProjectsModal';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
+// Mock data for fallback
+const MOCK_PROJECTS: Project[] = [
+  {
+    id: '1',
+    title: 'Physics Lab Report',
+    description: 'Complete a lab report on Newton\'s Laws of Motion',
+    teacherId: 'teacher-1',
+    groupId: 'group-1',
+    createdAt: '2023-04-10T12:00:00Z',
+    updatedAt: '2023-04-10T12:00:00Z',
+    groupName: 'Physics Group',
+  },
+  {
+    id: '2',
+    title: 'Chemistry Research',
+    description: 'Research on chemical reactions and their effects',
+    teacherId: 'teacher-2',
+    groupId: 'group-2',
+    createdAt: '2023-04-15T10:00:00Z',
+    updatedAt: '2023-04-15T10:00:00Z',
+    groupName: 'Chemistry Group',
+  }
+];
+
 const StudentProjects = () => {
-  const { user } = useAuth();
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
   const [projects, setProjects] = useState<Project[]>([]);
-  const [showModal, setShowModal] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [groupId, setGroupId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const { user, isAuthenticated } = useAuth();
+  const navigate = useNavigate();
 
-  const toggleSidebar = () => {
-    setIsSidebarOpen(!isSidebarOpen);
-  };
-
-  // First, fetch the student's group ID
   useEffect(() => {
-    const fetchStudentGroup = async () => {
-      if (!user) return;
-      
+    const fetchProjects = async () => {
+      if (!user) {
+        setLoading(false);
+        return;
+      }
+
       try {
-        // Get the student's group membership
-        const { data: groupMembership, error: membershipError } = await supabase
+        // Fetch the groups that the student belongs to
+        const { data: groupMemberships, error: groupError } = await supabase
           .from('group_members')
           .select('group_id')
-          .eq('user_id', user.id)
-          .single();
+          .eq('student_id', user.id);
 
-        if (membershipError) {
-          console.error('Error fetching group membership:', membershipError);
-          // Fall back to mock group ID for testing
-          console.log('Using mock group ID');
-          
-          // For testing with mock data
-          const studentId = user.id;
-          let mockGroupId = '1'; // Default
-          
-          if (studentId.includes('-')) {
-            const idPart = studentId.split('-')[1];
-            if (idPart && /^\d+$/.test(idPart)) {
-              mockGroupId = idPart;
-            }
-          }
-          
-          setGroupId(mockGroupId);
+        if (groupError) {
+          console.error('Error fetching group memberships:', groupError);
+          // Fallback to mock data
+          setProjects(MOCK_PROJECTS);
           return;
         }
 
-        if (groupMembership) {
-          setGroupId(groupMembership.group_id);
+        if (!groupMemberships || groupMemberships.length === 0) {
+          // No groups found, use mock data
+          setProjects(MOCK_PROJECTS);
+          return;
         }
-      } catch (error) {
-        console.error('Error in group membership fetch:', error);
-      }
-    };
 
-    fetchStudentGroup();
-  }, [user]);
+        // Extract group IDs
+        const groupIds = groupMemberships.map(membership => membership.group_id);
 
-  // Then fetch projects for that group
-  useEffect(() => {
-    const fetchProjects = async () => {
-      if (!groupId) return;
-      
-      setIsLoading(true);
-      try {
-        // Try to fetch from Supabase first
-        const { data: projectsData, error: projectsError } = await supabase
+        // Fetch projects for these groups
+        const { data: projectData, error: projectError } = await supabase
           .from('projects')
-          .select('*')
-          .eq('group_id', groupId);
+          .select(`
+            id,
+            title,
+            description,
+            teacher_id,
+            group_id,
+            created_at,
+            updated_at,
+            groups(name)
+          `)
+          .in('group_id', groupIds);
 
-        if (projectsError) {
-          throw projectsError;
+        if (projectError) {
+          console.error('Error fetching projects:', projectError);
+          // Fallback to mock data
+          setProjects(MOCK_PROJECTS);
+          return;
         }
 
-        if (projectsData && projectsData.length > 0) {
-          setProjects(projectsData as Project[]);
-          console.log('Fetched projects from Supabase:', projectsData);
-        } else {
-          // Fall back to mock data if no projects found
-          console.log('No projects found in Supabase, using mock data for group ID:', groupId);
-          const groupProjects = allProjects.filter(project => project.groupId === groupId);
-          setProjects(groupProjects);
-        }
+        // Map the Supabase data to our Project type
+        const formattedProjects: Project[] = projectData.map(project => ({
+          id: project.id,
+          title: project.title,
+          description: project.description || '',
+          teacherId: project.teacher_id,
+          groupId: project.group_id,
+          createdAt: project.created_at,
+          updatedAt: project.updated_at,
+          groupName: project.groups?.name || 'Unknown Group',
+        }));
+
+        setProjects(formattedProjects.length > 0 ? formattedProjects : MOCK_PROJECTS);
       } catch (error) {
         console.error('Error fetching projects:', error);
-        // Fall back to mock data
-        const groupProjects = allProjects.filter(project => project.groupId === groupId);
-        setProjects(groupProjects);
-        
-        toast({
-          title: "Error Loading Projects",
-          description: "There was a problem loading your projects. Using mock data instead.",
-          variant: "destructive",
-        });
+        // Fallback to mock data
+        setProjects(MOCK_PROJECTS);
       } finally {
-        setIsLoading(false);
+        setLoading(false);
       }
     };
-    
-    fetchProjects();
-    
-    // Check for notification flag
-    const showNotification = sessionStorage.getItem('showProjectNotification');
-    if (showNotification === 'true') {
-      setShowModal(true);
-      sessionStorage.removeItem('showProjectNotification');
-      
-      toast({
-        title: "Projects Assigned",
-        description: `Checking for projects assigned to your group.`,
-      });
-    }
-  }, [groupId]);
 
-  // Filter projects based on search query
-  const filteredProjects = projects.filter(
-    project =>
-      project.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      project.description.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+    fetchProjects();
+  }, [user]);
 
   return (
-    <div className="min-h-screen bg-background flex">
-      <Sidebar isOpen={isSidebarOpen} toggleSidebar={toggleSidebar} />
-      
-      <div className="flex-1 flex flex-col ml-0 sm:ml-16 transition-all duration-300 ease-in-out">
-        <Navbar isSidebarOpen={isSidebarOpen} toggleSidebar={toggleSidebar} />
-        
-        <main className="flex-1 py-8 px-6 animate-fadeIn">
-          <div className="max-w-7xl mx-auto">
-            <div className="mb-8">
-              <h1 className="text-3xl font-bold tracking-tight mb-2">Your Projects</h1>
-              <p className="text-muted-foreground">
-                View and track your assigned projects
-              </p>
-            </div>
-            
-            {/* Search and Filter */}
-            <div className="mb-8 glass-card rounded-lg p-4">
-              <div className="flex flex-col sm:flex-row gap-4">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                  <input
-                    type="text"
-                    placeholder="Search projects..."
-                    value={searchQuery}
-                    onChange={e => setSearchQuery(e.target.value)}
-                    className="input-field pl-10"
-                  />
-                </div>
-                
-                <div className="flex gap-2">
-                  <button className="btn-secondary inline-flex items-center gap-2">
-                    <Filter size={16} />
-                    Filter
-                  </button>
-                  <button className="btn-secondary inline-flex items-center gap-2">
-                    <ArrowUpDown size={16} />
-                    Sort
-                  </button>
-                </div>
-              </div>
-            </div>
-            
-            {/* Projects Grid */}
-            {isLoading ? (
-              <div className="flex justify-center py-12">
-                <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full"></div>
-              </div>
-            ) : filteredProjects.length === 0 ? (
-              <div className="glass-card rounded-xl p-8 text-center">
-                <FolderKanban className="mx-auto h-12 w-12 text-muted-foreground/60" />
-                <h3 className="mt-4 text-xl font-semibold">No projects found</h3>
-                <p className="mt-2 text-muted-foreground">
-                  {searchQuery
-                    ? "We couldn't find any projects matching your search."
-                    : "You don't have any assigned projects yet."}
-                </p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredProjects.map(project => (
-                  <ProjectCard key={project.id} project={project} />
-                ))}
-              </div>
-            )}
+    <DashboardLayout>
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-2xl font-bold">My Projects</h1>
+        </div>
+
+        {loading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="skeleton h-64 rounded-lg"></div>
+            ))}
           </div>
-        </main>
+        ) : projects.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {projects.map((project) => (
+              <ProjectCard
+                key={project.id}
+                id={project.id}
+                title={project.title}
+                description={project.description}
+                groupName={project.groupName || 'Unknown Group'}
+                onClick={() => navigate(`/projects/${project.id}`)}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-12">
+            <h3 className="text-xl mb-2">No projects found</h3>
+            <p className="text-gray-500">
+              You don't have any projects assigned to you yet.
+            </p>
+          </div>
+        )}
       </div>
-      
-      {/* Assigned Projects Modal */}
-      <AssignedProjectsModal 
-        isOpen={showModal}
-        onClose={() => setShowModal(false)}
-        projects={projects}
-      />
-    </div>
+    </DashboardLayout>
   );
 };
 

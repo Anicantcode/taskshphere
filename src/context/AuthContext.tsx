@@ -149,16 +149,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const register = async (name: string, email: string, password: string, role: UserRole) => {
     setIsLoading(true);
     try {
-      // 1. Create the auth user
+      // 1. Create the auth user with signUp
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
-        options: {
-          data: {
-            name,
-            role,
-          },
-        },
       });
 
       if (error) {
@@ -180,7 +174,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         });
 
       if (profileError) {
-        // If profile creation fails, we should ideally delete the auth user
         console.error('Profile creation failed:', profileError);
         throw profileError;
       }
