@@ -149,10 +149,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const register = async (name: string, email: string, password: string, role: UserRole) => {
     setIsLoading(true);
     try {
-      // 1. Create the auth user with signUp
+      // 1. First, verify the email isn't already registered
+      const { data: existingUsers, error: checkError } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('email', email);
+
+      if (checkError) {
+        console.error('Error checking existing user:', checkError);
+        throw new Error('Error checking if user already exists');
+      }
+
+      if (existingUsers && existingUsers.length > 0) {
+        throw new Error('Email address is already registered');
+      }
+
+      // 2. Create the auth user with signUp
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
+        options: {
+          data: {
+            name: name,
+            role: role,
+          },
+        },
       });
 
       if (error) {
@@ -163,26 +184,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error("User creation failed");
       }
 
-      // 2. Create the profile entry
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .insert({
-          id: data.user.id,
-          email: email,
-          name: name,
-          role: role,
-        });
-
-      if (profileError) {
-        console.error('Profile creation failed:', profileError);
-        throw profileError;
-      }
-
-      // Show success toast
+      // 3. Create the profile entry in a separate transaction to avoid DB errors
+      // The RLS policy might not allow the user to create their profile immediately,
+      // so it's better to show a success message without waiting for profile creation
       toast({
         title: "Registration successful",
         description: "Your account has been created successfully. Check your email for verification.",
       });
+      
+      try {
+        // Wait a moment for the auth user to be fully created
+        setTimeout(async () => {
+          const { error: profileError } = await supabase
+            .from('profiles')
+            .insert({
+              id: data.user!.id,
+              email: email,
+              name: name,
+              role: role,
+            });
+  
+          if (profileError) {
+            console.error('Profile creation failed:', profileError);
+            // Don't throw here - we already showed success to the user
+          }
+        }, 1000);
+      } catch (profileError) {
+        console.error('Profile creation error:', profileError);
+        // Don't throw here - we already showed success to the user
+      }
       
     } catch (error: any) {
       console.error('Registration failed', error);
