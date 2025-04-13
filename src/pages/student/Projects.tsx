@@ -133,11 +133,8 @@ const StudentProjects = () => {
             {projects.map((project) => (
               <ProjectCard
                 key={project.id}
-                id={project.id}
-                title={project.title}
-                description={project.description}
-                groupName={project.groupName || 'Unknown Group'}
-                onClick={() => navigate(`/projects/${project.id}`)}
+                project={project}
+                className=""
               />
             ))}
           </div>
