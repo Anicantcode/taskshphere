@@ -3,56 +3,103 @@ import React, { useState, useEffect } from 'react';
 import Navbar from '@/components/layout/Navbar';
 import Sidebar from '@/components/layout/Sidebar';
 import ProjectCard from '@/components/dashboard/ProjectCard';
-import { Project, Task } from '@/lib/types';
+import { Project } from '@/lib/types';
 import { Search, Filter, ArrowUpDown, FolderKanban } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { allProjects } from '@/lib/mockData';
 import AssignedProjectsModal from '@/components/dashboard/AssignedProjectsModal';
-import { useLocation } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
 const StudentProjects = () => {
   const { user } = useAuth();
-  const location = useLocation();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [projects, setProjects] = useState<Project[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [groupId, setGroupId] = useState<string | null>(null);
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
   };
 
-  // Extract the group ID from the student ID (assuming format: "student-X")
-  const studentId = user?.id || '';
-  let groupId = studentId.split('-')[1] || '';
-  
-  // If groupId is not numeric, set a default for testing
-  if (!groupId || !/^\d+$/.test(groupId)) {
-    console.warn('Could not extract valid group ID from student ID, using default "1"');
-    groupId = '1';
-  }
-  
-  console.log('Student ID:', studentId, 'Group ID:', groupId);
+  // First, fetch the student's group ID
+  useEffect(() => {
+    const fetchStudentGroup = async () => {
+      if (!user) return;
+      
+      try {
+        // Get the student's group membership
+        const { data: groupMembership, error: membershipError } = await supabase
+          .from('group_members')
+          .select('group_id')
+          .eq('user_id', user.id)
+          .single();
 
-  // Fetch projects - bypassing RLS by using mock data
+        if (membershipError) {
+          console.error('Error fetching group membership:', membershipError);
+          // Fall back to mock group ID for testing
+          console.log('Using mock group ID');
+          
+          // For testing with mock data
+          const studentId = user.id;
+          let mockGroupId = '1'; // Default
+          
+          if (studentId.includes('-')) {
+            const idPart = studentId.split('-')[1];
+            if (idPart && /^\d+$/.test(idPart)) {
+              mockGroupId = idPart;
+            }
+          }
+          
+          setGroupId(mockGroupId);
+          return;
+        }
+
+        if (groupMembership) {
+          setGroupId(groupMembership.group_id);
+        }
+      } catch (error) {
+        console.error('Error in group membership fetch:', error);
+      }
+    };
+
+    fetchStudentGroup();
+  }, [user]);
+
+  // Then fetch projects for that group
   useEffect(() => {
     const fetchProjects = async () => {
+      if (!groupId) return;
+      
       setIsLoading(true);
       try {
-        console.log('Using mock data for group ID:', groupId);
-        
-        // Simply filter the mock data based on group ID
+        // Try to fetch from Supabase first
+        const { data: projectsData, error: projectsError } = await supabase
+          .from('projects')
+          .select('*')
+          .eq('group_id', groupId);
+
+        if (projectsError) {
+          throw projectsError;
+        }
+
+        if (projectsData && projectsData.length > 0) {
+          setProjects(projectsData as Project[]);
+          console.log('Fetched projects from Supabase:', projectsData);
+        } else {
+          // Fall back to mock data if no projects found
+          console.log('No projects found in Supabase, using mock data for group ID:', groupId);
+          const groupProjects = allProjects.filter(project => project.groupId === groupId);
+          setProjects(groupProjects);
+        }
+      } catch (error) {
+        console.error('Error fetching projects:', error);
+        // Fall back to mock data
         const groupProjects = allProjects.filter(project => project.groupId === groupId);
         setProjects(groupProjects);
-        console.log('Projects found in mock data:', groupProjects);
         
-        // Future enhancement: Try accessing Supabase once we set up the tables
-        // properly, for now we'll use mock data only
-      } catch (error) {
-        console.error('Error in projects handler:', error);
         toast({
           title: "Error Loading Projects",
           description: "There was a problem loading your projects. Using mock data instead.",
@@ -63,22 +110,20 @@ const StudentProjects = () => {
       }
     };
     
-    if (user) {
-      fetchProjects();
+    fetchProjects();
+    
+    // Check for notification flag
+    const showNotification = sessionStorage.getItem('showProjectNotification');
+    if (showNotification === 'true') {
+      setShowModal(true);
+      sessionStorage.removeItem('showProjectNotification');
       
-      // Check for notification flag
-      const showNotification = sessionStorage.getItem('showProjectNotification');
-      if (showNotification === 'true') {
-        setShowModal(true);
-        sessionStorage.removeItem('showProjectNotification');
-        
-        toast({
-          title: "Projects Assigned",
-          description: `Checking for projects assigned to your group.`,
-        });
-      }
+      toast({
+        title: "Projects Assigned",
+        description: `Checking for projects assigned to your group.`,
+      });
     }
-  }, [groupId, user]);
+  }, [groupId]);
 
   // Filter projects based on search query
   const filteredProjects = projects.filter(

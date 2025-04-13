@@ -5,6 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 import { UserRole } from '@/lib/types';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import { toast } from '@/hooks/use-toast';
+import { AlertCircle } from 'lucide-react';
 
 interface AuthFormProps {
   type: 'login' | 'register';
@@ -14,6 +15,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
   const navigate = useNavigate();
   const { login, register } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   
   const [formData, setFormData] = useState({
     name: '',
@@ -26,27 +28,30 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+    setError(null); // Clear error when user changes input
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setError(null);
 
     try {
       if (type === 'register') {
         if (formData.password !== formData.confirmPassword) {
-          toast({
-            title: "Passwords don't match",
-            description: "Please make sure your passwords match.",
-            variant: "destructive",
-          });
+          setError("Passwords don't match");
           return;
         }
         
+        if (formData.password.length < 6) {
+          setError("Password must be at least 6 characters long");
+          return;
+        }
+
         await register(formData.name, formData.email, formData.password, formData.role);
         toast({
           title: "Account created",
-          description: "You've been successfully registered.",
+          description: "Please check your email for verification instructions.",
         });
       } else {
         await login(formData.email, formData.password);
@@ -54,17 +59,13 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
           title: "Welcome back!",
           description: "You've been successfully logged in.",
         });
+        
+        // Redirect based on user role (will be handled by protected routes)
+        navigate('/dashboard');
       }
-      
-      // Redirect based on user role (will be handled by protected routes)
-      navigate('/dashboard');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Authentication error:', error);
-      toast({
-        title: "Authentication failed",
-        description: "Please check your credentials and try again.",
-        variant: "destructive",
-      });
+      setError(error.message || "Authentication failed. Please check your credentials and try again.");
     } finally {
       setIsLoading(false);
     }
@@ -75,6 +76,13 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
       <h2 className="text-2xl font-semibold mb-6 text-center">
         {type === 'login' ? 'Sign In' : 'Create Account'}
       </h2>
+      
+      {error && (
+        <div className="mb-4 p-3 bg-destructive/10 border border-destructive/20 rounded-md flex items-start">
+          <AlertCircle className="h-5 w-5 text-destructive mr-2 mt-0.5 flex-shrink-0" />
+          <p className="text-sm text-destructive">{error}</p>
+        </div>
+      )}
       
       <form onSubmit={handleSubmit} className="space-y-4">
         {type === 'register' && (
@@ -91,6 +99,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
               onChange={handleChange}
               className="input-field"
               placeholder="John Doe"
+              disabled={isLoading}
             />
           </div>
         )}
@@ -108,6 +117,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
             onChange={handleChange}
             className="input-field"
             placeholder="your@email.com"
+            disabled={isLoading}
           />
         </div>
         
@@ -124,7 +134,13 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
             onChange={handleChange}
             className="input-field"
             placeholder="••••••••"
+            disabled={isLoading}
           />
+          {type === 'register' && (
+            <p className="text-xs text-muted-foreground">
+              Password must be at least 6 characters long
+            </p>
+          )}
         </div>
         
         {type === 'register' && (
@@ -142,6 +158,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
                 onChange={handleChange}
                 className="input-field"
                 placeholder="••••••••"
+                disabled={isLoading}
               />
             </div>
             
@@ -156,6 +173,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
                 onChange={handleChange}
                 className="input-field"
                 required
+                disabled={isLoading}
               >
                 <option value="student">Student</option>
                 <option value="teacher">Teacher</option>
