@@ -13,7 +13,7 @@ interface AuthFormProps {
 
 const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
   const navigate = useNavigate();
-  const { login, register, isLoading: authLoading } = useAuth();
+  const { login, register } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
@@ -37,18 +37,14 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
     setError(null);
 
     try {
-      console.log(`Attempting ${type}...`);
-      
       if (type === 'register') {
         if (formData.password !== formData.confirmPassword) {
           setError("Passwords don't match");
-          setIsLoading(false);
           return;
         }
         
         if (formData.password.length < 6) {
           setError("Password must be at least 6 characters long");
-          setIsLoading(false);
           return;
         }
 
@@ -58,9 +54,11 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
           description: "Please check your email for verification instructions.",
         });
       } else {
-        console.log('Calling login function with:', formData.email);
         await login(formData.email, formData.password);
-        console.log('Login function completed');
+        toast({
+          title: "Welcome back!",
+          description: "You've been successfully logged in.",
+        });
         
         // Redirect based on user role (will be handled by protected routes)
         navigate('/dashboard');
@@ -186,7 +184,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
         
         <button
           type="submit"
-          disabled={isLoading || authLoading}
+          disabled={isLoading}
           className="btn-primary w-full flex items-center justify-center"
         >
           {isLoading ? (

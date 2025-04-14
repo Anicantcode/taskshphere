@@ -115,47 +115,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (email: string, password: string) => {
     setIsLoading(true);
     try {
-      console.log('Attempting login for:', email);
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (error) {
-        console.error('Login error:', error);
         throw error;
-      }
-
-      if (!data.user) {
-        console.error('No user returned after login');
-        throw new Error('Login failed - no user data returned');
-      }
-
-      console.log('Login successful, session:', data.session);
-      
-      // Get user profile after successful authentication
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', data.user.id)
-        .single();
-
-      if (profileError) {
-        console.error('Error fetching profile after login:', profileError);
-        // We'll continue despite profile error - the auth listener should handle this
-      }
-
-      // If we got the profile, update the user state immediately
-      // instead of waiting for the auth listener
-      if (profile) {
-        const authenticatedUser: User = {
-          id: data.user.id,
-          name: profile?.name || data.user.email?.split('@')[0] || 'User',
-          email: data.user.email || '',
-          role: profile?.role as UserRole || 'student',
-          avatar: profile?.avatar_url,
-        };
-        setUser(authenticatedUser);
       }
 
       // Success toast
@@ -167,7 +133,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (error: any) {
       console.error('Login failed', error);
       
-      // Show error toast with more descriptive message
+      // Show error toast
       toast({
         title: "Login failed",
         description: error.message || "Invalid email or password. Please try again.",
