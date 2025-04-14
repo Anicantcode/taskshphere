@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import ProjectCard from '@/components/dashboard/ProjectCard';
-import { Project, Task } from '@/lib/types';
+import { Project } from '@/lib/types';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -19,24 +19,6 @@ const MOCK_PROJECTS: Project[] = [
     createdAt: '2023-04-10T12:00:00Z',
     updatedAt: '2023-04-10T12:00:00Z',
     groupName: 'Physics Group',
-    tasks: [
-      {
-        id: '1-1',
-        projectId: '1',
-        title: 'Define Newton\'s Laws',
-        description: 'Write a clear definition of each of Newton\'s three laws of motion',
-        isCompleted: false,
-        dueDate: '2023-04-15T12:00:00Z'
-      },
-      {
-        id: '1-2',
-        projectId: '1',
-        title: 'Create experiment setup',
-        description: 'Design and document the experimental setup to demonstrate the laws',
-        isCompleted: true,
-        dueDate: '2023-04-12T12:00:00Z'
-      }
-    ]
   },
   {
     id: '2',
@@ -47,16 +29,6 @@ const MOCK_PROJECTS: Project[] = [
     createdAt: '2023-04-15T10:00:00Z',
     updatedAt: '2023-04-15T10:00:00Z',
     groupName: 'Chemistry Group',
-    tasks: [
-      {
-        id: '2-1',
-        projectId: '2',
-        title: 'Document reaction types',
-        description: 'Classify and document different types of chemical reactions',
-        isCompleted: false,
-        dueDate: '2023-04-20T12:00:00Z'
-      }
-    ]
   }
 ];
 
@@ -119,7 +91,7 @@ const StudentProjects = () => {
         }
 
         // Map the Supabase data to our Project type
-        const projectsWithoutTasks: Project[] = projectData.map(project => ({
+        const formattedProjects: Project[] = projectData.map(project => ({
           id: project.id,
           title: project.title,
           description: project.description || '',
@@ -128,47 +100,9 @@ const StudentProjects = () => {
           createdAt: project.created_at,
           updatedAt: project.updated_at,
           groupName: project.groups?.name || 'Unknown Group',
-          tasks: []
         }));
-        
-        // If we have projects, fetch tasks for each project
-        if (projectsWithoutTasks.length > 0) {
-          const projectIds = projectsWithoutTasks.map(p => p.id);
-          
-          // Fetch tasks for all projects in one query
-          const { data: tasksData, error: tasksError } = await supabase
-            .from('tasks')
-            .select('*')
-            .in('project_id', projectIds);
-            
-          if (tasksError) {
-            console.error('Error fetching tasks:', tasksError);
-          } else if (tasksData) {
-            // Map tasks to their respective projects
-            const projectsWithTasks = projectsWithoutTasks.map(project => {
-              const projectTasks = tasksData
-                .filter(task => task.project_id === project.id)
-                .map(task => ({
-                  id: task.id,
-                  projectId: task.project_id,
-                  title: task.title,
-                  description: task.description || '',
-                  isCompleted: task.is_completed,
-                  dueDate: task.due_date
-                }));
-                
-              return {
-                ...project,
-                tasks: projectTasks
-              };
-            });
-            
-            setProjects(projectsWithTasks.length > 0 ? projectsWithTasks : MOCK_PROJECTS);
-            return;
-          }
-        }
-        
-        setProjects(projectsWithoutTasks.length > 0 ? projectsWithoutTasks : MOCK_PROJECTS);
+
+        setProjects(formattedProjects.length > 0 ? formattedProjects : MOCK_PROJECTS);
       } catch (error) {
         console.error('Error fetching projects:', error);
         // Fallback to mock data
@@ -177,51 +111,8 @@ const StudentProjects = () => {
         setLoading(false);
       }
     };
-    
-    // Set up real-time subscription for projects and tasks
-    const setupRealtimeSubscriptions = () => {
-      const projectsChannel = supabase
-        .channel('projects-changes')
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'projects'
-          },
-          () => {
-            console.log('Projects table changed, refreshing data...');
-            fetchProjects();
-          }
-        )
-        .subscribe();
-        
-      const tasksChannel = supabase
-        .channel('tasks-changes')
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'tasks'
-          },
-          () => {
-            console.log('Tasks table changed, refreshing data...');
-            fetchProjects();
-          }
-        )
-        .subscribe();
-        
-      return () => {
-        supabase.removeChannel(projectsChannel);
-        supabase.removeChannel(tasksChannel);
-      };
-    };
 
     fetchProjects();
-    const cleanup = setupRealtimeSubscriptions();
-    
-    return cleanup;
   }, [user]);
 
   return (

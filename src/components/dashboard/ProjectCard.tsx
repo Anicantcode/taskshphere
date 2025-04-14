@@ -2,9 +2,8 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Project } from '@/lib/types';
-import { FolderKanban, Calendar, Users, CheckCircle } from 'lucide-react';
+import { FolderKanban, Calendar, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { format, isAfter, parseISO } from 'date-fns';
 
 interface ProjectCardProps {
   project: Project;
@@ -23,35 +22,6 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, className }) => {
     day: 'numeric',
     year: 'numeric',
   });
-  
-  // Get the nearest due date among incomplete tasks
-  const getNextDueDate = () => {
-    if (!project.tasks || project.tasks.length === 0) return null;
-    
-    const incompleteTasks = project.tasks.filter(task => !task.isCompleted && task.dueDate);
-    if (incompleteTasks.length === 0) return null;
-    
-    // Sort tasks by due date (earliest first)
-    const sortedByDueDate = [...incompleteTasks].sort((a, b) => {
-      if (!a.dueDate) return 1;
-      if (!b.dueDate) return -1;
-      return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
-    });
-    
-    const nextDueTask = sortedByDueDate[0];
-    if (!nextDueTask.dueDate) return null;
-    
-    const dueDate = parseISO(nextDueTask.dueDate);
-    const isOverdue = isAfter(new Date(), dueDate);
-    
-    return {
-      date: format(dueDate, 'MMM d, yyyy'),
-      isOverdue,
-      taskTitle: nextDueTask.title
-    };
-  };
-  
-  const nextDue = getNextDueDate();
 
   return (
     <Link
@@ -91,19 +61,6 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, className }) => {
           />
         </div>
       </div>
-      
-      {nextDue && (
-        <div className="mt-3 text-sm border-t border-border pt-3">
-          <div className={`flex items-start ${nextDue.isOverdue ? 'text-red-500' : 'text-amber-500'}`}>
-            <Calendar size={14} className="mr-1 mt-1 flex-shrink-0" />
-            <div>
-              <span className="font-medium">Next due: </span>
-              <span>{nextDue.date}</span>
-              <p className="text-xs line-clamp-1 mt-0.5">{nextDue.taskTitle}</p>
-            </div>
-          </div>
-        </div>
-      )}
       
       <div className="mt-4 flex items-center justify-between text-sm text-muted-foreground">
         <div className="flex items-center">
