@@ -66,60 +66,11 @@ const StudentProjects = () => {
   const { user, isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
-  // Function to assign the current student to Group 1
-  const assignStudentToGroupOne = async (studentId: string) => {
-    if (!studentId) return;
-    
-    try {
-      // Check if the student is already in Group 1
-      const { data: existingMembership, error: checkError } = await supabase
-        .from('group_members')
-        .select('*')
-        .eq('student_id', studentId)
-        .eq('group_id', 'group-1');
-      
-      if (checkError) {
-        console.error('Error checking group membership:', checkError);
-        return;
-      }
-      
-      // If student is not in Group 1, add them
-      if (!existingMembership || existingMembership.length === 0) {
-        const { error: insertError } = await supabase
-          .from('group_members')
-          .insert({
-            group_id: 'group-1',
-            student_id: studentId
-          });
-          
-        if (insertError) {
-          console.error('Error adding student to Group 1:', insertError);
-          return;
-        }
-        
-        console.log('Successfully added student to Group 1');
-        toast({
-          title: 'Group Assigned',
-          description: 'You have been assigned to Group 1',
-        });
-      } else {
-        console.log('Student is already in Group 1');
-      }
-    } catch (error) {
-      console.error('Error in assignStudentToGroupOne:', error);
-    }
-  };
-
   useEffect(() => {
     const fetchProjects = async () => {
       if (!user) {
         setLoading(false);
         return;
-      }
-      
-      // Assign the current student to Group 1
-      if (user.role === 'student') {
-        await assignStudentToGroupOne(user.id);
       }
 
       try {
