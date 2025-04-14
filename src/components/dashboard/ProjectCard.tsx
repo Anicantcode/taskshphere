@@ -52,6 +52,19 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, className }) => {
   };
   
   const nextDue = getNextDueDate();
+  
+  // Handle group display - normalize "group-1" to "Group 1" if needed
+  const displayGroupName = () => {
+    if (project.groupName) return project.groupName;
+    
+    // If groupId follows the pattern "group-X", format it as "Group X"
+    if (project.groupId.startsWith('group-')) {
+      const groupNumber = project.groupId.replace('group-', '');
+      return `Group ${groupNumber}`;
+    }
+    
+    return `Group: ${project.groupId}`;
+  };
 
   return (
     <Link
@@ -69,7 +82,7 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, className }) => {
           <div className="ml-3">
             <h3 className="font-semibold text-lg line-clamp-1">{project.title}</h3>
             <p className="text-sm text-muted-foreground line-clamp-1">
-              {project.groupName || `Group: ${project.groupId}`}
+              {displayGroupName()}
             </p>
           </div>
         </div>
