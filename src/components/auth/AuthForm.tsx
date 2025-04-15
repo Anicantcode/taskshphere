@@ -5,7 +5,9 @@ import { useAuth } from '@/context/AuthContext';
 import { UserRole } from '@/lib/types';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import { toast } from '@/hooks/use-toast';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, LogIn, UserPlus } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 
 interface AuthFormProps {
   type: 'login' | 'register';
@@ -13,7 +15,7 @@ interface AuthFormProps {
 
 const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
   const navigate = useNavigate();
-  const { login, register, isLoading: authLoading } = useAuth();
+  const { login, register: registerUser, isLoading: authLoading } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
@@ -52,7 +54,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
           return;
         }
 
-        await register(formData.name, formData.email, formData.password, formData.role);
+        await registerUser(formData.name, formData.email, formData.password, formData.role);
         toast({
           title: "Account created",
           description: "Please check your email for verification instructions.",
@@ -62,8 +64,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
         await login(formData.email, formData.password);
         console.log('Login function completed');
         
-        // Redirect based on user role (will be handled by protected routes)
-        navigate('/dashboard');
+        // Redirect will be handled by protected routes in App.tsx
       }
     } catch (error: any) {
       console.error('Authentication error:', error);
@@ -92,14 +93,13 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
             <label htmlFor="name" className="block text-sm font-medium">
               Full Name
             </label>
-            <input
+            <Input
               id="name"
               name="name"
               type="text"
               required
               value={formData.name}
               onChange={handleChange}
-              className="input-field"
               placeholder="John Doe"
               disabled={isLoading}
             />
@@ -110,14 +110,13 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
           <label htmlFor="email" className="block text-sm font-medium">
             Email Address
           </label>
-          <input
+          <Input
             id="email"
             name="email"
             type="email"
             required
             value={formData.email}
             onChange={handleChange}
-            className="input-field"
             placeholder="your@email.com"
             disabled={isLoading}
           />
@@ -127,14 +126,13 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
           <label htmlFor="password" className="block text-sm font-medium">
             Password
           </label>
-          <input
+          <Input
             id="password"
             name="password"
             type="password"
             required
             value={formData.password}
             onChange={handleChange}
-            className="input-field"
             placeholder="••••••••"
             disabled={isLoading}
           />
@@ -151,14 +149,13 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
               <label htmlFor="confirmPassword" className="block text-sm font-medium">
                 Confirm Password
               </label>
-              <input
+              <Input
                 id="confirmPassword"
                 name="confirmPassword"
                 type="password"
                 required
                 value={formData.confirmPassword}
                 onChange={handleChange}
-                className="input-field"
                 placeholder="••••••••"
                 disabled={isLoading}
               />
@@ -173,7 +170,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
                 name="role"
                 value={formData.role}
                 onChange={handleChange}
-                className="input-field"
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
                 required
                 disabled={isLoading}
               >
@@ -184,17 +181,27 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
           </>
         )}
         
-        <button
+        <Button
           type="submit"
+          variant="default"
+          size="lg"
           disabled={isLoading || authLoading}
-          className="btn-primary w-full flex items-center justify-center"
+          className="w-full"
         >
           {isLoading ? (
             <LoadingSpinner size="sm" />
+          ) : type === 'login' ? (
+            <>
+              <LogIn className="mr-2" size={18} />
+              Sign In
+            </>
           ) : (
-            type === 'login' ? 'Sign In' : 'Create Account'
+            <>
+              <UserPlus className="mr-2" size={18} />
+              Create Account
+            </>
           )}
-        </button>
+        </Button>
       </form>
       
       <div className="mt-6 text-center text-sm">
