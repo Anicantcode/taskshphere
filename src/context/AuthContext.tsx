@@ -10,7 +10,7 @@ interface AuthContextType {
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (name: string, email: string, password: string, role: UserRole) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
 }
 
 const defaultContext: AuthContextType = {
@@ -19,7 +19,7 @@ const defaultContext: AuthContextType = {
   isLoading: true,
   login: async () => {},
   register: async () => {},
-  logout: () => {},
+  logout: async () => {},
 };
 
 const AuthContext = createContext<AuthContextType>(defaultContext);
@@ -75,6 +75,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Subscribe to auth changes
     const { data: authListener } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        console.log('Auth state changed:', event, session);
         if (event === 'SIGNED_IN' && session) {
           // Get user profile after sign-in
           const { data: profile, error: profileError } = await supabase

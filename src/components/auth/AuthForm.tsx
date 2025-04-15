@@ -5,7 +5,9 @@ import { useAuth } from '@/context/AuthContext';
 import { UserRole } from '@/lib/types';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import { toast } from '@/hooks/use-toast';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, LogIn, UserPlus, Eye, EyeOff } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 
 interface AuthFormProps {
   type: 'login' | 'register';
@@ -14,8 +16,9 @@ interface AuthFormProps {
 const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
   const navigate = useNavigate();
   const { login, register, isLoading: authLoading } = useAuth();
-  const [isLoading, setIsLoading] = useState(false);
+  const [formIsSubmitting, setFormIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
   
   const [formData, setFormData] = useState({
     name: '',
@@ -31,9 +34,13 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
     setError(null); // Clear error when user changes input
   };
 
+  const toggleShowPassword = () => {
+    setShowPassword(!showPassword);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
+    setFormIsSubmitting(true);
     setError(null);
 
     try {
@@ -42,13 +49,13 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
       if (type === 'register') {
         if (formData.password !== formData.confirmPassword) {
           setError("Passwords don't match");
-          setIsLoading(false);
+          setFormIsSubmitting(false);
           return;
         }
         
         if (formData.password.length < 6) {
           setError("Password must be at least 6 characters long");
-          setIsLoading(false);
+          setFormIsSubmitting(false);
           return;
         }
 
@@ -69,12 +76,14 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
       console.error('Authentication error:', error);
       setError(error.message || "Authentication failed. Please check your credentials and try again.");
     } finally {
-      setIsLoading(false);
+      setFormIsSubmitting(false);
     }
   };
 
+  const isButtonDisabled = formIsSubmitting || authLoading;
+
   return (
-    <div className="glass-card w-full max-w-md p-8 rounded-lg animate-fadeIn">
+    <div className="glass-card w-full max-w-md p-8 rounded-lg shadow-lg animate-fadeIn">
       <h2 className="text-2xl font-semibold mb-6 text-center">
         {type === 'login' ? 'Sign In' : 'Create Account'}
       </h2>
@@ -92,16 +101,16 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
             <label htmlFor="name" className="block text-sm font-medium">
               Full Name
             </label>
-            <input
+            <Input
               id="name"
               name="name"
               type="text"
               required
               value={formData.name}
               onChange={handleChange}
-              className="input-field"
               placeholder="John Doe"
-              disabled={isLoading}
+              disabled={isButtonDisabled}
+              className="w-full"
             />
           </div>
         )}
@@ -110,16 +119,16 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
           <label htmlFor="email" className="block text-sm font-medium">
             Email Address
           </label>
-          <input
+          <Input
             id="email"
             name="email"
             type="email"
             required
             value={formData.email}
             onChange={handleChange}
-            className="input-field"
             placeholder="your@email.com"
-            disabled={isLoading}
+            disabled={isButtonDisabled}
+            className="w-full"
           />
         </div>
         
@@ -127,17 +136,31 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
           <label htmlFor="password" className="block text-sm font-medium">
             Password
           </label>
-          <input
-            id="password"
-            name="password"
-            type="password"
-            required
-            value={formData.password}
-            onChange={handleChange}
-            className="input-field"
-            placeholder="••••••••"
-            disabled={isLoading}
-          />
+          <div className="relative">
+            <Input
+              id="password"
+              name="password"
+              type={showPassword ? "text" : "password"}
+              required
+              value={formData.password}
+              onChange={handleChange}
+              placeholder="••••••••"
+              disabled={isButtonDisabled}
+              className="w-full pr-10"
+            />
+            <button
+              type="button"
+              onClick={toggleShowPassword}
+              className="absolute right-3 top-1/2 transform -translate-y-1/2"
+              tabIndex={-1}
+            >
+              {showPassword ? (
+                <EyeOff className="h-4 w-4 text-muted-foreground" />
+              ) : (
+                <Eye className="h-4 w-4 text-muted-foreground" />
+              )}
+            </button>
+          </div>
           {type === 'register' && (
             <p className="text-xs text-muted-foreground">
               Password must be at least 6 characters long
@@ -151,17 +174,19 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
               <label htmlFor="confirmPassword" className="block text-sm font-medium">
                 Confirm Password
               </label>
-              <input
-                id="confirmPassword"
-                name="confirmPassword"
-                type="password"
-                required
-                value={formData.confirmPassword}
-                onChange={handleChange}
-                className="input-field"
-                placeholder="••••••••"
-                disabled={isLoading}
-              />
+              <div className="relative">
+                <Input
+                  id="confirmPassword"
+                  name="confirmPassword"
+                  type={showPassword ? "text" : "password"}
+                  required
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                  placeholder="••••••••"
+                  disabled={isButtonDisabled}
+                  className="w-full pr-10"
+                />
+              </div>
             </div>
             
             <div className="space-y-2">
@@ -173,9 +198,9 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
                 name="role"
                 value={formData.role}
                 onChange={handleChange}
-                className="input-field"
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 required
-                disabled={isLoading}
+                disabled={isButtonDisabled}
               >
                 <option value="student">Student</option>
                 <option value="teacher">Teacher</option>
@@ -184,17 +209,29 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
           </>
         )}
         
-        <button
+        <Button
           type="submit"
-          disabled={isLoading || authLoading}
-          className="btn-primary w-full flex items-center justify-center"
+          disabled={isButtonDisabled}
+          className="w-full h-10 mt-2"
         >
-          {isLoading ? (
+          {formIsSubmitting ? (
             <LoadingSpinner size="sm" />
           ) : (
-            type === 'login' ? 'Sign In' : 'Create Account'
+            <>
+              {type === 'login' ? (
+                <>
+                  <LogIn className="h-4 w-4 mr-2" />
+                  Sign In
+                </>
+              ) : (
+                <>
+                  <UserPlus className="h-4 w-4 mr-2" />
+                  Create Account
+                </>
+              )}
+            </>
           )}
-        </button>
+        </Button>
       </form>
       
       <div className="mt-6 text-center text-sm">
