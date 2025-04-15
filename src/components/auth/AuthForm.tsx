@@ -118,7 +118,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
             value={formData.email}
             onChange={handleChange}
             placeholder="your@email.com"
-            disabled={isLoading}
+            disabled={isLoading || authLoading}
           />
         </div>
         
@@ -134,7 +134,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
             value={formData.password}
             onChange={handleChange}
             placeholder="••••••••"
-            disabled={isLoading}
+            disabled={isLoading || authLoading}
           />
           {type === 'register' && (
             <p className="text-xs text-muted-foreground">
@@ -186,18 +186,18 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
           variant="default"
           size="lg"
           disabled={isLoading || authLoading}
-          className="w-full"
+          className="w-full flex items-center justify-center gap-2"
         >
-          {isLoading ? (
+          {(isLoading || authLoading) ? (
             <LoadingSpinner size="sm" />
           ) : type === 'login' ? (
             <>
-              <LogIn className="mr-2" size={18} />
+              <LogIn size={18} />
               Sign In
             </>
           ) : (
             <>
-              <UserPlus className="mr-2" size={18} />
+              <UserPlus size={18} />
               Create Account
             </>
           )}
