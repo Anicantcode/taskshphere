@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -7,6 +8,7 @@ import { Project, Task } from '@/lib/types';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
+// Mock data for fallback
 const MOCK_PROJECTS: Project[] = [
   {
     id: '1',
@@ -64,10 +66,12 @@ const StudentProjects = () => {
   const { user, isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
+  // Function to assign the current student to Group 1
   const assignStudentToGroupOne = async (studentId: string) => {
     if (!studentId) return;
     
     try {
+      // Check if the student is already in Group 1
       const { data: existingMembership, error: checkError } = await supabase
         .from('group_members')
         .select('*')
@@ -76,14 +80,10 @@ const StudentProjects = () => {
       
       if (checkError) {
         console.error('Error checking group membership:', checkError);
-        toast({
-          title: 'Group Assignment Issue',
-          description: `Error checking group membership: ${checkError.message}`,
-          variant: 'destructive',
-        });
         return;
       }
       
+      // If student is not in Group 1, add them
       if (!existingMembership || existingMembership.length === 0) {
         const { error: insertError } = await supabase
           .from('group_members')
@@ -94,11 +94,6 @@ const StudentProjects = () => {
           
         if (insertError) {
           console.error('Error adding student to Group 1:', insertError);
-          toast({
-            title: 'Group Assignment Issue',
-            description: `Error adding to group: ${insertError.message}`,
-            variant: 'destructive',
-          });
           return;
         }
         
@@ -112,25 +107,23 @@ const StudentProjects = () => {
       }
     } catch (error) {
       console.error('Error in assignStudentToGroupOne:', error);
-      toast({
-        title: 'Group Assignment Error',
-        description: 'An unexpected error occurred when assigning to group',
-        variant: 'destructive',
-      });
     }
   };
 
+  // Enhanced fetchProjects function to better handle project and task data
   const fetchProjects = async () => {
     if (!user) {
       setLoading(false);
       return;
     }
     
+    // Assign the current student to Group 1
     if (user.role === 'student') {
       await assignStudentToGroupOne(user.id);
     }
 
     try {
+      // First fetch the most recent projects directly from Supabase
       const { data: projectData, error: projectsError } = await supabase
         .from('projects')
         .select(`
@@ -159,6 +152,7 @@ const StudentProjects = () => {
         return;
       }
 
+      // Map projects data and prepare to fetch tasks
       const mappedProjects: Project[] = projectData.map(project => ({
         id: project.id,
         title: project.title,
@@ -168,11 +162,13 @@ const StudentProjects = () => {
         createdAt: project.created_at,
         updatedAt: project.updated_at,
         groupName: project.groups?.name || null,
-        tasks: []
+        tasks: [] // We'll populate this next
       }));
 
+      // Get all project IDs to fetch tasks for
       const projectIds = mappedProjects.map(p => p.id);
 
+      // Fetch tasks for all projects in one query
       const { data: tasksData, error: tasksError } = await supabase
         .from('tasks')
         .select('*')
@@ -180,11 +176,13 @@ const StudentProjects = () => {
 
       if (tasksError) {
         console.error('Error fetching tasks:', tasksError);
+        // Continue with projects but without tasks
         setProjects(mappedProjects);
         setLoading(false);
         return;
       }
 
+      // Add tasks to their respective projects
       if (tasksData && tasksData.length > 0) {
         const projectsWithTasks = mappedProjects.map(project => {
           const projectTasks = tasksData
@@ -206,12 +204,13 @@ const StudentProjects = () => {
 
         setProjects(projectsWithTasks);
       } else {
+        // No tasks found, just use the projects as is
         setProjects(mappedProjects);
       }
 
     } catch (error) {
       console.error('Error in fetchProjects:', error);
-      setProjects(MOCK_PROJECTS);
+      setProjects(MOCK_PROJECTS); // Fallback to mock data
     } finally {
       setLoading(false);
     }
@@ -220,6 +219,7 @@ const StudentProjects = () => {
   useEffect(() => {
     fetchProjects();
     
+    // Set up real-time subscription for projects and tasks
     const setupRealtimeSubscriptions = () => {
       const projectsChannel = supabase
         .channel('projects-changes')
