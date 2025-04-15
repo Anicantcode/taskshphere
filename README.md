@@ -1,69 +1,59 @@
-# Welcome to your Lovable project
+# 📚 Class Project Tracker
 
-## Project info
+A web platform designed to help teachers assign tasks to student groups, and for students to track their progress, submit work proofs, and compete on a leaderboard. Built with **React** and **Supabase**.
 
-**URL**: https://lovable.dev/projects/86e2ab7e-ed62-4f66-8230-cb037faa4dbe
+## 🚀 Features
 
-## How can I edit this code?
+- 🧑‍🏫 **Admin Dashboard** (for teachers)
+  - Create and manage projects
+  - Assign tasks to groups
+  - Review submissions with options to approve or reject
+  - Award scores and update leaderboard
 
-There are several ways of editing your application.
+- 👨‍🎓 **Student Dashboard**
+  - Join a group
+  - View assigned tasks
+  - Submit proofs (image + description)
+  - Track group progress via a visual progress bar
+  - Compete on a live leaderboard
 
-**Use Lovable**
+## 🛠️ Tech Stack
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/86e2ab7e-ed62-4f66-8230-cb037faa4dbe) and start prompting.
+- **Frontend**: React + Tailwind CSS
+- **Backend/Database**: Supabase (PostgreSQL)
+- **Auth**: Supabase Auth
 
-Changes made via Lovable will be committed automatically to this repo.
+## 🗂️ Database Schema (Supabase)
 
-**Use your preferred IDE**
+- `profiles`: User data (role: student/teacher)
+- `groups`: Group details
+- `group_members`: Links users to groups
+- `projects`: Class project definitions
+- `tasks`: Tasks assigned to each project
+- `submissions`: Proofs submitted by students
+- `leaderboard`: Calculated leaderboard data
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+## 📦 Setup Instructions
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+1. **Clone the repo**
+   ```bash
+   git clone https://github.com/your-username/class-project-tracker.git
+   cd class-project-tracker
+npm install
+Configure Supabase
 
-Follow these steps:
+    Create a Supabase project
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+    Set up tables according to the schema above
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+    Add your Supabase URL and anon key to a .env file:
 
-# Step 3: Install the necessary dependencies.
-npm i
+VITE_SUPABASE_URL=your-url
+VITE_SUPABASE_ANON_KEY=your-anon-key
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+Run the app
+
 npm run dev
-```
+🙌 Contributions
 
-**Edit a file directly in GitHub**
-
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
-
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with .
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/86e2ab7e-ed62-4f66-8230-cb037faa4dbe) and click on Share -> Publish.
-
-## I want to use a custom domain - is that possible?
-
-We don't support custom domains (yet). If you want to deploy your project under your own domain then we recommend using Netlify. Visit our docs for more details: [Custom domains](https://docs.lovable.dev/tips-tricks/custom-domain/)
+Feel free to fork this repo and submit pull requests or open issues!
