@@ -3,22 +3,16 @@ import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AuthForm from '@/components/auth/AuthForm';
 import { useAuth } from '@/context/AuthContext';
-import { toast } from '@/hooks/use-toast';
 
 const Login = () => {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Only redirect if authentication state is loaded and user is authenticated
-    if (!isLoading && isAuthenticated) {
-      toast({
-        title: "Already signed in",
-        description: "Redirecting to dashboard",
-      });
+    if (isAuthenticated) {
       navigate('/dashboard');
     }
-  }, [isAuthenticated, navigate, isLoading]);
+  }, [isAuthenticated, navigate]);
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-50 px-4 py-12 animate-fadeIn">
